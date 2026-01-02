@@ -1,61 +1,17 @@
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "la-figures"
-dynamic = ["version"]
-description = ''
-readme = "README.md"
-requires-python = ">=3.8"
-license = "MIT"
-keywords = []
-authors = [
-  { name = "ea42gh", email = "ea42_github@mail.com" },
-]
-classifiers = [
-  "Development Status :: 4 - Beta",
-  "Programming Language :: Python",
-  "Programming Language :: Python :: 3.8",
-  "Programming Language :: Python :: 3.9",
-  "Programming Language :: Python :: 3.10",
-  "Programming Language :: Python :: 3.11",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: Implementation :: CPython",
-  "Programming Language :: Python :: Implementation :: PyPy",
-]
-dependencies = []
-
-[project.urls]
-Documentation = "https://github.com/ea42gh/la-figures#readme"
-Issues = "https://github.com/ea42gh/la-figures/issues"
-Source = "https://github.com/ea42gh/la-figures"
-
-[tool.hatch.version]
-path = "src/la_figures/__about__.py"
-
-[tool.hatch.envs.types]
-extra-dependencies = [
-  "mypy>=1.0.0",
-]
-[tool.hatch.envs.types.scripts]
-check = "mypy --install-types --non-interactive {args:src/la_figures tests}"
-
-[tool.coverage.run]
-source_pkgs = ["la_figures", "tests"]
-branch = true
-parallel = true
-omit = [
-  "src/la_figures/__about__.py",
+name = "la_figures"
+version = "0.0.0"
+description = "Linear algebra algorithms and description objects for matrixlayout figures"
+requires-python = ">=3.9"
+dependencies = [
+  "sympy>=1.10",
+  "numpy>=1.21",
 ]
 
-[tool.coverage.paths]
-la_figures = ["src/la_figures", "*/la-figures/src/la_figures"]
-tests = ["tests", "*/la-figures/tests"]
-
-[tool.coverage.report]
-exclude_lines = [
-  "no cov",
-  "if __name__ == .__main__.:",
-  "if TYPE_CHECKING:",
-]
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = ["tests"]
