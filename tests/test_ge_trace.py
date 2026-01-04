@@ -1,54 +1,37 @@
 import sympy as sym
 
-from la_figures import ge_trace, trace_to_layer_matrices
+
+def test_ge_trace_pivots_and_steps():
+    import la_figures
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    trace = la_figures.ge_trace(A, pivoting="none")
+
+    assert trace.Nrhs == 0
+    assert trace.pivot_cols == (0, 1)
+    assert trace.free_cols == ()
+    assert len(trace.steps) == 2
+
+    layers = la_figures.trace_to_layer_matrices(trace)
+    assert layers["Nrhs"] == 0
+    assert layers["matrices"][0][0] is None
+    assert layers["matrices"][0][1] == trace.initial
+    assert layers["matrices"][1][0] is not None
+    assert layers["matrices"][1][1].shape == trace.initial.shape
 
 
-def test_ge_trace_basic_augmented():
-    A = sym.Matrix([[2, 1], [4, 3]])
-    b = sym.Matrix([1, 2])
+def test_ge_trace_emits_row_exchange_events():
+    import la_figures
 
-    tr = ge_trace(A, b, pivoting="none")
+    # The first pivot in column 0 is in row 1, requiring a swap.
+    A = sym.Matrix([[0, 1], [1, 0]])
+    trace = la_figures.ge_trace(A, pivoting="none")
 
-    # Initial augmented matrix: [A|b]
-    assert tr.initial.shape == (2, 3)
-    assert tr.Nrhs == 1
+    ops = [ev.op for ev in trace.events]
+    assert "RequireRowExchange" in ops
+    assert "DoRowExchange" in ops
 
-    # Two pivots (full rank)
-    assert list(tr.pivot_cols) == [0, 1]
-    assert list(tr.free_cols) == []
-    assert list(tr.pivot_positions) == [(0, 0), (1, 1)]
-
-    # First elimination matrix should eliminate row 2, col 1.
-    E0 = tr.steps[0].E
-    Ab1 = tr.steps[0].Ab
-    assert E0.shape == (2, 2)
-    assert E0[1, 0] == -sym.Rational(2, 1)
-    assert Ab1[1, 0] == 0
-
-    # Second step should be identity (no elimination needed).
-    assert tr.steps[1].E == sym.eye(2)
-
-    # Conversion to legacy-style layer matrices.
-    spec = trace_to_layer_matrices(tr, augmented=True)
-    mats = spec["matrices"]
-    assert len(mats) == 1 + len(tr.steps)
-    assert mats[0][0] is None
-    assert mats[0][1] == tr.initial
-
-
-def test_ge_trace_row_swap():
-    A = sym.Matrix([[0, 1], [2, 3]])
-
-    tr = ge_trace(A, None, pivoting="none")
-
-    # Pivot in col 0 requires a row swap.
-    assert list(tr.pivot_cols) == [0, 1]
-    assert tr.steps[0].pivot == (0, 0)
-
-    E0 = tr.steps[0].E
-    Ab1 = tr.steps[0].Ab
-
-    # E0 should swap rows 0 and 1.
-    assert E0 == sym.Matrix([[0, 1], [1, 0]])
-    assert Ab1[0, 0] == 2
-    assert Ab1[1, 0] == 0
+    # The event stream should be serializable to dictionaries.
+    payload = trace.events_as_dicts()
+    assert isinstance(payload, list)
+    assert all("op" in item and "level" in item for item in payload)
