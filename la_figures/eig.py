@@ -11,7 +11,7 @@ decompositions). It does not render.
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple, Union
 
 import sympy as sym
 
@@ -45,145 +45,6 @@ def _maybe_round_vectors(vecs: List[sym.Matrix], digits: Optional[int]) -> List[
         vv = sym.Matrix(v)
         out.append(vv.applyfunc(lambda t: _maybe_round(t, digits)))
     return out
-
-
-EigenVectsItem = Tuple[Any, Any, Sequence[Any]]
-
-
-@dataclass
-class EigenDecomposition:
-    """Structured eigen-decomposition result.
-
-    This is an algorithmic object intended to be convertible into the
-    ``eig`` description dictionary consumed by :func:`matrixlayout.eigproblem_tex`.
-    """
-
-    lambdas: List[Any]
-    multiplicities: List[int]
-    evecs: List[List[sym.Matrix]]
-    qvecs: Optional[List[List[sym.Matrix]]] = None
-
-    def to_spec(self) -> Dict[str, Any]:
-        eig: Dict[str, Any] = {
-            "lambda": list(self.lambdas),
-            "ma": list(self.multiplicities),
-            "evecs": [list(g) for g in self.evecs],
-        }
-        if self.qvecs is not None:
-            eig["qvecs"] = [list(g) for g in self.qvecs]
-        return eig
-
-
-def eig_spec_from_eigenvects(
-    eigenvects: Iterable[EigenVectsItem],
-    *,
-    normal: bool = False,
-    Ascale: Optional[Any] = None,
-    eig_digits: Optional[int] = None,
-    vec_digits: Optional[int] = None,
-    order: str = "legacy",
-) -> Dict[str, Any]:
-    """Convert a SymPy-style ``eigenvects()`` result into an eigproblem spec.
-
-    Parameters
-    ----------
-    eigenvects:
-        An iterable of ``(eigenvalue, multiplicity, eigenvectors)``.
-        This is compatible with the output of ``sympy.Matrix.eigenvects()``.
-    normal:
-        If true, compute orthonormal bases within each eigenspace (``qvecs``).
-    Ascale:
-        If provided, eigenvalues are divided by ``Ascale``.
-    eig_digits, vec_digits:
-        Optional rounding controls for eigenvalues and eigenvector entries.
-    order:
-        Ordering policy for distinct eigenvalues.
-
-        - ``"legacy"`` (default): matches the historical ``itikz`` behavior by
-          reversing the order returned by SymPy.
-        - ``"sympy"``: preserve SymPy's order.
-
-    Returns
-    -------
-    dict
-        An ``eig`` dictionary with keys ``lambda``, ``ma``, ``evecs``, and
-        optionally ``qvecs``.
-    """
-
-    eig: Dict[str, Any] = {
-        "lambda": [],
-        "ma": [],
-        "evecs": [],
-    }
-    if normal:
-        eig["qvecs"] = []
-
-    def _emit(e_scaled: Any, m_int: int, vecs2: List[sym.Matrix]) -> None:
-        if order == "sympy":
-            eig["lambda"].append(e_scaled)
-            eig["ma"].append(m_int)
-            eig["evecs"].append(vecs2)
-            if normal:
-                eig["qvecs"].append(q_gram_schmidt(vecs2))
-        else:
-            # Legacy inserts at 0 to reverse the order returned by SymPy.
-            eig["lambda"].insert(0, e_scaled)
-            eig["ma"].insert(0, m_int)
-            eig["evecs"].insert(0, vecs2)
-            if normal:
-                eig["qvecs"].insert(0, q_gram_schmidt(vecs2))
-
-    for (e, m, vecs) in eigenvects:
-        e_scaled = e if Ascale is None else (e / Ascale)
-        e_scaled = _maybe_round(e_scaled, eig_digits)
-
-        vecs2 = [sym.Matrix(v) for v in vecs]
-        vecs2 = _maybe_round_vectors(vecs2, vec_digits)
-
-        _emit(e_scaled, int(m), vecs2)
-
-    if order not in ("legacy", "sympy"):
-        raise ValueError(f"Unsupported order={order!r}; expected 'legacy' or 'sympy'")
-
-    return eig
-
-
-def eigendecomposition(
-    A: Any,
-    *,
-    normal: bool = False,
-    Ascale: Optional[Any] = None,
-    eig_digits: Optional[int] = None,
-    vec_digits: Optional[int] = None,
-    order: str = "legacy",
-) -> EigenDecomposition:
-    """Compute a structured eigen-decomposition of ``A``.
-
-    This is a convenience routine intended for algorithmic consumers that want
-    a typed object (rather than a plain dictionary) and/or want to reuse a
-    decomposition output to populate multiple layouts.
-    """
-
-    A = to_sympy_matrix(A)
-    if A is None:
-        raise ValueError("A must not be None")
-    if A.rows != A.cols:
-        raise ValueError(f"eigendecomposition requires a square matrix; got shape {A.shape}")
-
-    spec = eig_spec_from_eigenvects(
-        A.eigenvects(),
-        normal=normal,
-        Ascale=Ascale,
-        eig_digits=eig_digits,
-        vec_digits=vec_digits,
-        order=order,
-    )
-    return EigenDecomposition(
-        lambdas=list(spec["lambda"]),
-        multiplicities=[int(x) for x in spec["ma"]],
-        evecs=[list(g) for g in spec["evecs"]],
-        qvecs=[list(g) for g in spec["qvecs"]] if "qvecs" in spec else None,
-    )
 
 
 def eig_tbl_spec(
@@ -224,11 +85,146 @@ def eig_tbl_spec(
     if A.rows != A.cols:
         raise ValueError(f"eig_tbl_spec requires a square matrix; got shape {A.shape}")
 
-    return eig_spec_from_eigenvects(
-        A.eigenvects(),
+    eig: Dict[str, Any] = {
+        "lambda": [],
+        "ma": [],
+        "evecs": [],
+    }
+    if normal:
+        eig["qvecs"] = []
+
+    res = A.eigenvects()
+    for (e, m, vecs) in res:
+        e_scaled = e if Ascale is None else (e / Ascale)
+        e_scaled = _maybe_round(e_scaled, eig_digits)
+        vecs2 = [sym.Matrix(v) for v in vecs]
+        vecs2 = _maybe_round_vectors(vecs2, vec_digits)
+
+        # Legacy inserts at 0 to reverse the order returned by SymPy.
+        eig["lambda"].insert(0, e_scaled)
+        eig["ma"].insert(0, int(m))
+        eig["evecs"].insert(0, vecs2)
+
+        if normal:
+            eig["qvecs"].insert(0, q_gram_schmidt(vecs2))
+
+    return eig
+
+
+EigenvectsResult = Iterable[Tuple[Any, int, Sequence[sym.Matrix]]]
+
+
+def eig_spec_from_eigenvects(
+    eigenvects: EigenvectsResult,
+    *,
+    normal: bool = False,
+    Ascale: Optional[Any] = None,
+    eig_digits: Optional[int] = None,
+    vec_digits: Optional[int] = None,
+    order: str = "legacy",
+) -> Dict[str, Any]:
+    """Convert a precomputed eigenvects-style result into a matrixlayout spec.
+
+    Parameters
+    ----------
+    eigenvects:
+        An iterable of ``(e, m, vecs)`` triples, as produced by
+        ``sympy.Matrix.eigenvects()``.
+    normal, Ascale, eig_digits, vec_digits:
+        Behave as in :func:`eig_tbl_spec`.
+    order:
+        - ``"legacy"`` (default): match the legacy itikz ordering (reverse of
+          SymPy's eigenvects order).
+        - ``"sympy"``: preserve SymPy's order.
+    """
+
+    eig: Dict[str, Any] = {
+        "lambda": [],
+        "ma": [],
+        "evecs": [],
+    }
+    if normal:
+        eig["qvecs"] = []
+
+    # Collect once so we can reverse deterministically.
+    triples: List[Tuple[Any, int, List[sym.Matrix]]] = []
+    for (e, m, vecs) in eigenvects:
+        vecs2 = [sym.Matrix(v) for v in vecs]
+        triples.append((e, int(m), vecs2))
+
+    if order not in {"legacy", "sympy"}:
+        raise ValueError(f"order must be 'legacy' or 'sympy'; got {order!r}")
+
+    if order == "legacy":
+        triples = list(reversed(triples))
+
+    for (e, m, vecs2) in triples:
+        e_scaled = e if Ascale is None else (e / Ascale)
+        e_scaled = _maybe_round(e_scaled, eig_digits)
+        vecs2 = _maybe_round_vectors(vecs2, vec_digits)
+
+        eig["lambda"].append(e_scaled)
+        eig["ma"].append(int(m))
+        eig["evecs"].append(vecs2)
+        if normal:
+            eig["qvecs"].append(q_gram_schmidt(vecs2))
+
+    return eig
+
+
+@dataclass(frozen=True)
+class EigenDecomposition:
+    """A small container for a computed eigendecomposition and options."""
+
+    A: sym.Matrix
+    eigenvects: List[Tuple[Any, int, List[sym.Matrix]]]
+    normal: bool = False
+    Ascale: Optional[Any] = None
+    eig_digits: Optional[int] = None
+    vec_digits: Optional[int] = None
+
+    def to_spec(self, *, order: str = "legacy") -> Dict[str, Any]:
+        return eig_spec_from_eigenvects(
+            self.eigenvects,
+            normal=self.normal,
+            Ascale=self.Ascale,
+            eig_digits=self.eig_digits,
+            vec_digits=self.vec_digits,
+            order=order,
+        )
+
+
+def eigendecomposition(
+    A: Any,
+    *,
+    normal: bool = False,
+    Ascale: Optional[Any] = None,
+    eig_digits: Optional[int] = None,
+    vec_digits: Optional[int] = None,
+) -> EigenDecomposition:
+    """Compute and return an :class:`EigenDecomposition`.
+
+    This is useful when callers (including Julia code) want to compute
+    eigen-information once and later derive multiple specs (different ordering,
+    rounding, or presentation options).
+    """
+
+    A2 = to_sympy_matrix(A)
+    if A2 is None:
+        raise ValueError("A must not be None")
+    if A2.rows != A2.cols:
+        raise ValueError(f"eigendecomposition requires a square matrix; got shape {A2.shape}")
+
+    ev_raw = A2.eigenvects()
+    ev: List[Tuple[Any, int, List[sym.Matrix]]] = []
+    for (e, m, vecs) in ev_raw:
+        ev.append((e, int(m), [sym.Matrix(v) for v in vecs]))
+
+    return EigenDecomposition(
+        A=A2,
+        eigenvects=ev,
         normal=normal,
         Ascale=Ascale,
         eig_digits=eig_digits,
         vec_digits=vec_digits,
-        order="legacy",
     )
