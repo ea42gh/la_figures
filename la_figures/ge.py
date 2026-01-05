@@ -18,7 +18,7 @@ trace into a layout builder.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any, Dict, List, Literal, Mapping, Optional, Sequence, Tuple
 
 import sympy as sym
@@ -28,22 +28,18 @@ from ._sympy_utils import to_sympy_col, to_sympy_matrix
 
 Pivoting = Literal["none", "partial"]
 
-
 @dataclass(frozen=True)
 class GEEvent:
-    """A single action/event emitted during elimination.
+    """One logical operation/event emitted by :func:`ge_trace`.
 
-    This event stream is designed to be easily serializable and usable for
-    downstream figure-decoration logic.
-
-    The ``level`` field is an integer suitable for indexing a matrix-stack
-    representation where level 0 is the initial matrix and level k corresponds
-    to the state after applying the k-th stored elementary matrix.
+    This is intentionally primitive-only (op string + dict payload) so it
+    can cross language boundaries (e.g., Julia via PyCall/PythonCall).
     """
 
     op: str
     level: int
-    data: Mapping[str, Any] = field(default_factory=dict)
+    data: Mapping[str, Any]
+
 
 
 @dataclass(frozen=True)
@@ -93,20 +89,32 @@ class GETrace:
 
     initial: sym.Matrix
     steps: Sequence[GEStep]
+    events: Sequence[GEEvent]
     pivot_cols: Sequence[int]
     free_cols: Sequence[int]
     pivot_positions: Sequence[Tuple[int, int]]
     Nrhs: int
     meta: Mapping[str, Any]
-    events: Sequence[GEEvent] = field(default_factory=tuple)
+
 
     def events_as_dicts(self) -> List[Dict[str, Any]]:
         """Return the event stream as JSON-friendly dictionaries."""
 
-        return [
-            {"op": ev.op, "level": ev.level, **({} if not ev.data else {"data": dict(ev.data)})}
-            for ev in self.events
-        ]
+        out: List[Dict[str, Any]] = []
+        for ev in getattr(self, "events", ()):
+            data: Dict[str, Any] = {}
+            for k, v in dict(ev.data).items():
+                # Convert common SymPy scalars to plain Python values.
+                if isinstance(v, sym.Integer):
+                    data[k] = int(v)
+                elif isinstance(v, sym.Rational):
+                    data[k] = (int(v.p), int(v.q))
+                elif isinstance(v, sym.Basic):
+                    data[k] = str(v)
+                else:
+                    data[k] = v
+            out.append({"op": str(ev.op), "level": int(ev.level), "data": data})
+        return out
 
 
 def _is_nonzero(x: sym.Expr) -> bool:
@@ -180,13 +188,7 @@ def _swap_matrix(m: int, i: int, j: int) -> sym.Matrix:
     return P
 
 
-def _elimination_matrix(
-    Ab: sym.Matrix,
-    pivot_row: int,
-    pivot_col: int,
-    *,
-    gj: bool = False,
-) -> sym.Matrix:
+def _elimination_matrix(Ab: sym.Matrix, pivot_row: int, pivot_col: int) -> sym.Matrix:
     """Return an elementary matrix eliminating entries below a pivot.
 
     The returned matrix ``E`` performs:
@@ -205,18 +207,11 @@ def _elimination_matrix(
         # Caller asked to eliminate around a zero pivot; return identity.
         return E
 
-    # Below pivot.
     for r in range(pivot_row + 1, m):
         a = Ab[r, pivot_col]
-        if _is_nonzero(a):
-            E[r, pivot_row] = -a / piv
-
-    # Above pivot (Gauss-Jordan).
-    if gj and pivot_row > 0:
-        for r in range(0, pivot_row):
-            a = Ab[r, pivot_col]
-            if _is_nonzero(a):
-                E[r, pivot_row] = -a / piv
+        if not _is_nonzero(a):
+            continue
+        E[r, pivot_row] = -a / piv
 
     return E
 
@@ -226,8 +221,6 @@ def ge_trace(
     ref_rhs: Any = None,
     *,
     pivoting: Pivoting = "partial",
-    gj: bool = False,
-    n: Optional[int] = None,
 ) -> GETrace:
     """Compute a Gaussian elimination trace for ``A`` (optionally augmented).
 
@@ -240,11 +233,6 @@ def ge_trace(
     pivoting:
         Pivot selection strategy. ``"partial"`` uses max-abs pivoting for numeric
         matrices; otherwise it behaves like ``"none"``.
-    gj:
-        If True, perform Gauss-Jordan elimination (also eliminate above pivots).
-        (Pivot normalization is intentionally left to a later migration step.)
-    n:
-        If provided, only the first ``n`` coefficient columns are reduced.
 
     Returns
     -------
@@ -268,10 +256,8 @@ def ge_trace(
         Ab = sym.Matrix(A).row_join(sym.Matrix(rhs))
         Nrhs = rhs.cols
 
-    m, _n_aug = Ab.shape
+    m, n_aug = Ab.shape
     n_coef = A.cols
-    if n is not None:
-        n_coef = min(n_coef, int(n))
 
     steps: List[GEStep] = []
     events: List[GEEvent] = []
@@ -289,106 +275,35 @@ def ge_trace(
         if pr is None:
             continue
 
-        # The step index is the level of the *resulting* state after the
-        # net elementary transformation.
-        level = len(steps) + 1
-
-        if pr != row:
-            events.append(
-                GEEvent(
-                    op="RequireRowExchange",
-                    level=level,
-                    data={
-                        "row_1": row,
-                        "row_2": pr,
-                        "col": col,
-                        "cur_rank": len(pivot_cols) + 1,
-                        "pivot_cols": tuple(pivot_cols) + (col,),
-                    },
-                )
-            )
+        events.append(GEEvent(op="FoundPivot", level=len(steps), data={"row": int(pr), "col": int(col)}))
 
         # Row swap (if needed).
         P = _swap_matrix(m, row, pr)
+        if pr != row:
+            events.append(GEEvent(op="RequireRowExchange", level=len(steps), data={"src": int(pr), "dst": int(row)}))
+            events.append(GEEvent(op="DoRowExchange", level=len(steps), data={"src": int(pr), "dst": int(row)}))
         cur_swapped = P * cur
 
-        if pr != row:
-            events.append(
-                GEEvent(
-                    op="DoRowExchange",
-                    level=level,
-                    data={
-                        "row_1": row,
-                        "row_2": pr,
-                        "col": col,
-                        "cur_rank": len(pivot_cols) + 1,
-                    },
-                )
-            )
-
-        events.append(
-            GEEvent(
-                op="FoundPivot",
-                level=level,
-                data={
-                    "row": row,
-                    "pivot_row": row,
-                    "pivot_col": col,
-                    "cur_rank": len(pivot_cols) + 1,
-                    "pivot_cols": tuple(pivot_cols) + (col,),
-                },
-            )
-        )
-
-        # Eliminate below (and optionally above) pivot.
-        Eelim = _elimination_matrix(cur_swapped, row, col, gj=gj)
+        # Eliminate below pivot.
+        events.append(GEEvent(op="RequireElimination", level=len(steps), data={"pivot_row": int(row), "pivot_col": int(col)}))
+        Eelim = _elimination_matrix(cur_swapped, row, col)
         Enet = Eelim * P
         cur = Eelim * cur_swapped
-
-        # Determine whether an elimination was needed.
-        def _needs_elim() -> bool:
-            below = any(_is_nonzero(cur_swapped[r, col]) for r in range(row + 1, m))
-            above = gj and any(_is_nonzero(cur_swapped[r, col]) for r in range(0, row))
-            return bool(below or above)
-
-        need_elim = _needs_elim()
-        events.append(
-            GEEvent(
-                op="RequireElimination",
-                level=level,
-                data={
-                    "gj": gj,
-                    "yes": need_elim,
-                    "row": row,
-                    "col": col,
-                    "cur_rank": len(pivot_cols) + 1,
-                    "pivot_cols": tuple(pivot_cols) + (col,),
-                },
-            )
-        )
+        events.append(GEEvent(op="DoElimination", level=len(steps), data={"pivot_row": int(row), "pivot_col": int(col)}))
 
         steps.append(GEStep(E=Enet, Ab=cur, pivot=(row, col)))
-        if need_elim:
-            events.append(
-                GEEvent(
-                    op="DoElimination",
-                    level=level,
-                    data={
-                        "pivot_row": row,
-                        "pivot_col": col,
-                        "gj": gj,
-                    },
-                )
-            )
         pivot_cols.append(col)
         pivot_positions.append((row, col))
         row += 1
 
     free_cols = [j for j in range(n_coef) if j not in pivot_cols]
 
+    events.append(GEEvent(op="Finished", level=len(steps), data={"rank": int(len(pivot_cols))}))
+
     return GETrace(
         initial=Ab,
         steps=tuple(steps),
+        events=tuple(events),
         pivot_cols=tuple(pivot_cols),
         free_cols=tuple(free_cols),
         pivot_positions=tuple(pivot_positions),
@@ -398,10 +313,7 @@ def ge_trace(
             "aug_shape": tuple(Ab.shape),
             "rank": len(pivot_cols),
             "pivoting": pivoting,
-            "gj": gj,
-            "n": n_coef,
         },
-        events=tuple(events + [GEEvent(op="Finished", level=len(steps), data={"pivot_cols": tuple(pivot_cols)})]),
     )
 
 
@@ -461,4 +373,81 @@ def trace_to_layer_matrices(
         "pivot_cols": list(trace.pivot_cols),
         "free_cols": list(trace.free_cols),
         "meta": dict(trace.meta),
+    }
+
+
+def decorate_ge(
+    trace: GETrace,
+    *,
+    index_base: int = 1,
+    pivot_style: str = "",
+) -> Dict[str, Any]:
+    """Compute presentation decorations from a :class:`GETrace`.
+
+    This is the Python analogue of the Julia-side ``decorate_ge`` helper.
+    It is intentionally *data-only*: it returns plain Python containers
+    (strings, ints, lists, tuples) so the result can be passed across
+    language boundaries (e.g. Julia via PyCall/PythonCall) and later
+    consumed by layout/rendering code.
+
+    Parameters
+    ----------
+    trace:
+        Gaussian-elimination trace returned by :func:`ge_trace`.
+    index_base:
+        Coordinate base for cell references. Use 1 for nicematrix coordinates.
+        Set to 0 if your upstream producer emits 0-based coordinates.
+    pivot_style:
+        Optional TikZ style fragment appended to pivot "fit" nodes when the
+        decoration is rendered (e.g. ``"thick, draw=red"``).
+
+    Returns
+    -------
+    dict
+        Keys are chosen to be directly usable by downstream layout builders:
+
+        - ``pivot_locs``: list of ``(fit_target, extra_style)`` where
+          ``fit_target`` is a string like ``"(2-3)(2-3)"``.
+        - ``variable_types``: list of ``"pivot"`` / ``"free"`` for each
+          coefficient column (RHS columns excluded).
+
+        Additional keys are returned as empty lists for future increments:
+        ``bg_list``, ``path_list``, ``txt_with_locs``, ``rowechelon_paths``.
+    """
+
+    # Number of coefficient columns. Prefer the recorded shape metadata.
+    n_coef = None
+    shp = trace.meta.get("shape") if isinstance(trace.meta, dict) else None
+    if shp and len(shp) == 2:
+        n_coef = int(shp[1])
+    if n_coef is None:
+        n_coef = int(trace.initial.cols - int(trace.Nrhs or 0))
+
+    pivot_set = set(int(c) for c in trace.pivot_cols)
+    variable_types: List[str] = [
+        ("pivot" if j in pivot_set else "free") for j in range(n_coef)
+    ]
+
+    def _cell(r: int, c: int) -> str:
+        rr = int(r) + int(index_base)
+        cc = int(c) + int(index_base)
+        return f"({rr}-{cc})"
+
+    pivot_locs: List[Tuple[str, str]] = [
+        (f"{_cell(r, c)}{_cell(r, c)}", str(pivot_style).strip())
+        for (r, c) in trace.pivot_positions
+    ]
+
+    return {
+        "pivot_locs": pivot_locs,
+        "variable_types": variable_types,
+        # Retain trace metadata for downstream consumers.
+        "pivot_positions": list(trace.pivot_positions),
+        "pivot_cols": list(trace.pivot_cols),
+        "free_cols": list(trace.free_cols),
+        # Placeholders for later GE decoration increments.
+        "bg_list": [],
+        "path_list": [],
+        "txt_with_locs": [],
+        "rowechelon_paths": [],
     }
