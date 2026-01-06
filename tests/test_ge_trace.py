@@ -10,7 +10,7 @@ def test_ge_trace_pivots_and_steps():
     assert trace.Nrhs == 0
     assert trace.pivot_cols == (0, 1)
     assert trace.free_cols == ()
-    assert len(trace.steps) == 2
+    assert len(trace.steps) == 1
 
     layers = la_figures.trace_to_layer_matrices(trace)
     assert layers["Nrhs"] == 0

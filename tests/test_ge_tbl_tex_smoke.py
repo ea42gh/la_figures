@@ -21,8 +21,8 @@ def test_ge_tbl_tex_smoke():
     from la_figures.ge_convenience import ge_tbl_tex
 
     A = sym.Matrix([[1, 2], [3, 4]])
-    tex = ge_tbl_tex(A)
+    tex = ge_tbl_tex(A, show_pivots=True)
     assert "\\begin{NiceArray}" in tex
-    assert "\\begin{pNiceArray}" in tex
+    assert r"\SubMatrix({1-3}{2-4})[name=A0]" in tex
     # pivot boxes are emitted in CodeAfter
     assert "fit=" in tex

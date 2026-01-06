@@ -220,7 +220,7 @@ def ge_trace(
     ref_A: Any,
     ref_rhs: Any = None,
     *,
-    pivoting: Pivoting = "partial",
+    pivoting: Pivoting = "none",
 ) -> GETrace:
     """Compute a Gaussian elimination trace for ``A`` (optionally augmented).
 
@@ -275,25 +275,83 @@ def ge_trace(
         if pr is None:
             continue
 
-        events.append(GEEvent(op="FoundPivot", level=len(steps), data={"row": int(pr), "col": int(col)}))
-
-        # Row swap (if needed).
-        P = _swap_matrix(m, row, pr)
-        if pr != row:
-            events.append(GEEvent(op="RequireRowExchange", level=len(steps), data={"src": int(pr), "dst": int(row)}))
-            events.append(GEEvent(op="DoRowExchange", level=len(steps), data={"src": int(pr), "dst": int(row)}))
-        cur_swapped = P * cur
-
-        # Eliminate below pivot.
-        events.append(GEEvent(op="RequireElimination", level=len(steps), data={"pivot_row": int(row), "pivot_col": int(col)}))
-        Eelim = _elimination_matrix(cur_swapped, row, col)
-        Enet = Eelim * P
-        cur = Eelim * cur_swapped
-        events.append(GEEvent(op="DoElimination", level=len(steps), data={"pivot_row": int(row), "pivot_col": int(col)}))
-
-        steps.append(GEStep(E=Enet, Ab=cur, pivot=(row, col)))
+        # Record pivot metadata once per pivot *column* (not once per displayed layer).
+        # This intentionally matches the Julia reference implementation: the final
+        # REF/RREF pivot set is independent of whether an explicit elementary
+        # operation is required at that pivot (e.g., last pivot column has no rows
+        # below to eliminate).
         pivot_cols.append(col)
         pivot_positions.append((row, col))
+
+        # ------------------------------------------------------------------
+        # Row exchange step (if needed): emitted as its own layer.
+        # ------------------------------------------------------------------
+        if pr != row:
+            events.append(
+                GEEvent(
+                    op="RequireRowExchange",
+                    level=len(steps),
+                    data={"row_1": int(row), "row_2": int(pr), "col": int(col)},
+                )
+            )
+            P = _swap_matrix(m, row, pr)
+            cur = P * cur
+            steps.append(GEStep(E=P, Ab=cur, pivot=(row, col)))
+            events.append(
+                GEEvent(
+                    op="DoRowExchange",
+                    level=len(steps),
+                    data={"row_1": int(row), "row_2": int(pr), "col": int(col)},
+                )
+            )
+
+        # Found pivot (reported after any exchange so the pivot is on `row`).
+        events.append(
+            GEEvent(
+                op="FoundPivot",
+                level=len(steps),
+                data={
+                    "row": int(row),
+                    "pivot_row": int(pr),
+                    "pivot_col": int(col),
+                    "rank": int(len(pivot_cols)),
+                },
+            )
+        )
+
+        # ------------------------------------------------------------------
+        # Elimination step (if needed): emitted as its own layer.
+        # Skip the step entirely when the elimination matrix would be identity.
+        # ------------------------------------------------------------------
+        needs_elim = any(_is_nonzero(cur[r, col]) for r in range(row + 1, m))
+        if needs_elim:
+            events.append(
+                GEEvent(
+                    op="RequireElimination",
+                    level=len(steps),
+                    data={"pivot_row": int(row), "pivot_col": int(col)},
+                )
+            )
+            Eelim = _elimination_matrix(cur, row, col)
+            cur = Eelim * cur
+            steps.append(GEStep(E=Eelim, Ab=cur, pivot=(row, col)))
+            events.append(
+                GEEvent(
+                    op="DoElimination",
+                    level=len(steps),
+                    data={"pivot_row": int(row), "pivot_col": int(col)},
+                )
+            )
+        else:
+            # Retain an explicit “no elimination required” event for consumers.
+            events.append(
+                GEEvent(
+                    op="RequireElimination",
+                    level=len(steps),
+                    data={"pivot_row": int(row), "pivot_col": int(col), "yes": False},
+                )
+            )
+
         row += 1
 
     free_cols = [j for j in range(n_coef) if j not in pivot_cols]
