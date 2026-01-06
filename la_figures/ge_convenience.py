@@ -33,11 +33,13 @@ def _build_ge_bundle(
     index_base: int = 1,
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     # Julia interop typically passes the RHS as a keyword named `rhs`.
     # Keep the internal naming (`ref_rhs`) but accept `rhs` as an alias.
@@ -97,11 +99,13 @@ def _build_ge_bundle(
         matrices=layers["matrices"],
         Nrhs=int(tr.Nrhs or 0),
         preamble=preamble,
+        extension=extension,
         nice_options=nice_options,
         pivot_locs=pivot_locs,
         txt_with_locs=decor.get("txt_with_locs"),
         rowechelon_paths=decor.get("rowechelon_paths"),
         callouts=callouts,
+        fig_scale=fig_scale,
         outer_delims=bool(outer_delims),
         outer_hspace_mm=int(outer_hspace_mm),
         cell_align=str(cell_align),
@@ -125,11 +129,13 @@ def ge_tbl_spec(
     index_base: int = 1,
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec for :func:`matrixlayout.ge.ge_grid_tex`.
 
@@ -145,11 +151,13 @@ def ge_tbl_spec(
         index_base=index_base,
         pivot_style=pivot_style,
         preamble=preamble,
+        extension=extension,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        fig_scale=fig_scale,
     )["spec"]
 
 
@@ -163,11 +171,13 @@ def ge_tbl_bundle(
     index_base: int = 1,
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Return a bundle containing the trace, decorations, spec, and TeX."""
 
@@ -180,11 +190,13 @@ def ge_tbl_bundle(
         index_base=index_base,
         pivot_style=pivot_style,
         preamble=preamble,
+        extension=extension,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        fig_scale=fig_scale,
     )
 
     from matrixlayout.ge import ge_grid_tex
@@ -204,11 +216,13 @@ def ge_tbl_tex(
     index_base: int = 1,
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
 ) -> str:
     """Compute a GE-table TeX document (no rendering)."""
 
@@ -221,11 +235,13 @@ def ge_tbl_tex(
         index_base=index_base,
         pivot_style=pivot_style,
         preamble=preamble,
+        extension=extension,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        fig_scale=fig_scale,
     )["tex"]
 
 
@@ -239,6 +255,7 @@ def ge_tbl_svg(
     index_base: int = 1,
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -247,6 +264,7 @@ def ge_tbl_svg(
     crop: Optional[str] = None,
     padding: Tuple[int, int, int, int] = (2, 2, 2, 2),
     callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
 ) -> str:
     """Render a GE-table to SVG via matrixlayout (strict rendering boundary)."""
 
@@ -259,11 +277,13 @@ def ge_tbl_svg(
         index_base=index_base,
         pivot_style=pivot_style,
         preamble=preamble,
+        extension=extension,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        fig_scale=fig_scale,
     )
 
     from matrixlayout.ge import ge_grid_svg
