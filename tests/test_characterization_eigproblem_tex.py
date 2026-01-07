@@ -20,8 +20,21 @@ def _ensure_repo_on_path() -> None:
     from pathlib import Path
 
     root = Path(__file__).resolve().parents[2]
-    if str(root) not in sys.path:
-        sys.path.insert(0, str(root))
+
+    # The monorepo uses per-package roots (e.g. ./itikz/itikz is the legacy
+    # package). Add the itikz root so `import itikz.nicematrix` works when
+    # running from a checkout without installing the legacy package.
+    itikz_root = root / "itikz"
+
+    # Ensure itikz_root appears before the monorepo root to avoid Python
+    # resolving `itikz` as a namespace package rooted at ./itikz.
+    for p in (root, itikz_root):
+        s = str(p)
+        if s in sys.path:
+            sys.path.remove(s)
+
+    for p in (root, itikz_root):
+        sys.path.insert(0, str(p))
 
 
 def _normalize_tex(s: str) -> str:

@@ -63,16 +63,6 @@ def _build_ge_bundle(
     decor = decorate_ge(tr, index_base=index_base, pivot_style=eff_pivot_style)
     layers = trace_to_layer_matrices(tr, augmented=True)
 
-    # Convenience: callers often just want "A_k" / "E_k" delimiter callouts.
-    # Allow ``callouts=True`` to request a reasonable default set.
-    if callouts is True:
-        try:
-            from matrixlayout.nicematrix_decor import infer_ge_layer_callouts
-
-            callouts = infer_ge_layer_callouts(layers.get("matrices") or [])
-        except Exception as e:
-            raise ValueError(f"Failed to infer default GE callouts: {e}") from e
-
     # Rebase pivot locations to the last layer and to the A-block column offset.
     pivot_positions = (decor.get("pivot_positions") or []) if pivots_enabled else []
     n_layers = len(layers.get("matrices") or [])
@@ -209,10 +199,31 @@ def ge_tbl_bundle(
         fig_scale=fig_scale,
     )
 
-    from matrixlayout.ge import ge_grid_tex
+    # Prefer the notebook-oriented bundle API when available. This avoids
+    # regex-parsing generated TeX to discover \SubMatrix names.
+    from dataclasses import asdict
 
-    tex = ge_grid_tex(**bundle["spec"])
-    bundle["tex"] = tex
+    try:
+        from matrixlayout.ge import ge_grid_bundle
+
+        gb = ge_grid_bundle(**bundle["spec"])
+        bundle["tex"] = gb.tex
+        bundle["submatrix_spans"] = [
+            {
+                **asdict(s),
+                "left_delim_node": s.left_delim_node,
+                "right_delim_node": s.right_delim_node,
+                "start_token": s.start_token,
+                "end_token": s.end_token,
+            }
+            for s in gb.submatrix_spans
+        ]
+    except ImportError:
+        # Fall back to plain TeX generation for older matrixlayout versions.
+        from matrixlayout.ge import ge_grid_tex
+
+        tex = ge_grid_tex(**bundle["spec"])
+        bundle["tex"] = tex
     return bundle
 
 
