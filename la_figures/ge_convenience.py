@@ -63,6 +63,16 @@ def _build_ge_bundle(
     decor = decorate_ge(tr, index_base=index_base, pivot_style=eff_pivot_style)
     layers = trace_to_layer_matrices(tr, augmented=True)
 
+    # Convenience: callers often just want "A_k" / "E_k" delimiter callouts.
+    # Allow ``callouts=True`` to request a reasonable default set.
+    if callouts is True:
+        try:
+            from matrixlayout.nicematrix_decor import infer_ge_layer_callouts
+
+            callouts = infer_ge_layer_callouts(layers.get("matrices") or [])
+        except Exception as e:
+            raise ValueError(f"Failed to infer default GE callouts: {e}") from e
+
     # Rebase pivot locations to the last layer and to the A-block column offset.
     pivot_positions = (decor.get("pivot_positions") or []) if pivots_enabled else []
     n_layers = len(layers.get("matrices") or [])
