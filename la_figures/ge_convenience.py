@@ -16,9 +16,39 @@ so Julia can later compute traces/decorations and call the same renderer.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple, Union
 
 from .ge import GETrace, decorate_ge, ge_trace, trace_to_layer_matrices
+
+
+def _build_typed_layout_spec(
+    *,
+    pivot_locs: Optional[Any],
+    txt_with_locs: Optional[Any],
+    rowechelon_paths: Optional[Any],
+    callouts: Optional[Any],
+    nice_options: str,
+    preamble: str,
+    extension: str,
+    fig_scale: Optional[Any],
+    outer_delims: bool,
+) -> "GELayoutSpec":
+    from matrixlayout.specs import GELayoutSpec, PivotBox, RowEchelonPath, TextAt
+
+    typed_pivots = [PivotBox(*item) for item in (pivot_locs or [])]
+    typed_txt = [TextAt(*item) for item in (txt_with_locs or [])]
+    typed_paths = [RowEchelonPath(str(p)) for p in (rowechelon_paths or [])]
+
+    return GELayoutSpec(
+        nice_options=nice_options,
+        preamble=preamble,
+        extension=extension,
+        pivot_locs=typed_pivots,
+        txt_with_locs=typed_txt,
+        rowechelon_paths=typed_paths,
+        callouts=callouts,
+        outer_delims=outer_delims,
+    )
 
 
 def _build_ge_bundle(
@@ -111,11 +141,24 @@ def _build_ge_bundle(
         cell_align=str(cell_align),
     )
 
+    typed_layout = _build_typed_layout_spec(
+        pivot_locs=pivot_locs,
+        txt_with_locs=decor.get("txt_with_locs"),
+        rowechelon_paths=decor.get("rowechelon_paths"),
+        callouts=callouts,
+        nice_options=nice_options,
+        preamble=preamble,
+        extension=extension,
+        fig_scale=fig_scale,
+        outer_delims=bool(outer_delims),
+    )
+
     return {
         "trace": tr,
         "decor": decor,
         "layers": layers,
         "spec": spec,
+        "typed_layout": typed_layout,
     }
 
 
@@ -159,6 +202,53 @@ def ge_tbl_spec(
         callouts=callouts,
         fig_scale=fig_scale,
     )["spec"]
+
+
+def ge_tbl_layout_spec(
+    ref_A: Any,
+    ref_rhs: Any = None,
+    *,
+    rhs: Any = None,
+    pivoting: str = "none",
+    show_pivots: Optional[bool] = False,
+    index_base: int = 1,
+    pivot_style: str = "",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    extension: str = "",
+    nice_options: str = "vlines-in-sub-matrix = I",
+    outer_delims: bool = False,
+    outer_hspace_mm: int = 6,
+    cell_align: str = "r",
+    callouts: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Return a layout spec using :class:`matrixlayout.specs.GELayoutSpec`."""
+
+    bundle = _build_ge_bundle(
+        ref_A,
+        ref_rhs,
+        rhs=rhs,
+        pivoting=pivoting,
+        show_pivots=show_pivots,
+        index_base=index_base,
+        pivot_style=pivot_style,
+        preamble=preamble,
+        extension=extension,
+        nice_options=nice_options,
+        outer_delims=outer_delims,
+        outer_hspace_mm=outer_hspace_mm,
+        cell_align=cell_align,
+        callouts=callouts,
+        fig_scale=fig_scale,
+    )
+
+    return {
+        "matrices": bundle["layers"]["matrices"],
+        "Nrhs": int(bundle["trace"].Nrhs or 0),
+        "layout": bundle["typed_layout"],
+        "outer_hspace_mm": int(outer_hspace_mm),
+        "cell_align": str(cell_align),
+    }
 
 
 def ge_tbl_bundle(

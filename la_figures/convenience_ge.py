@@ -9,6 +9,7 @@ This module re-exports the public wrappers so both import paths work.
 
 from .ge_convenience import (
     ge_tbl_bundle,
+    ge_tbl_layout_spec,
     ge_tbl_spec,
     ge_tbl_tex,
     ge_tbl_svg,
@@ -16,6 +17,7 @@ from .ge_convenience import (
 
 __all__ = [
     "ge_tbl_bundle",
+    "ge_tbl_layout_spec",
     "ge_tbl_spec",
     "ge_tbl_tex",
     "ge_tbl_svg",

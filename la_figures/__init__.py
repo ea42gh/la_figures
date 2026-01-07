@@ -26,7 +26,7 @@ from .backsub import (
     backsub_system_tex,
 )
 from .ge import ge_trace, trace_to_layer_matrices
-from .convenience_ge import ge_tbl_bundle, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
+from .convenience_ge import ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
 
 __all__ = [
     "EigenDecomposition",
@@ -47,6 +47,7 @@ __all__ = [
     "ge_trace",
     "trace_to_layer_matrices",
     "ge_tbl_spec",
+    "ge_tbl_layout_spec",
     "ge_tbl_tex",
     "ge_tbl_svg",
     "ge_tbl_bundle",
