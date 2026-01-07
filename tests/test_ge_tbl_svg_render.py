@@ -35,3 +35,22 @@ def test_ge_tbl_svg_smoke():
     )
 
     assert "<svg" in svg
+
+
+@pytest.mark.render
+def test_ge_tbl_svg_smoke_with_pivots():
+    pytest.importorskip("matrixlayout")
+    pytest.importorskip("jupyter_tikz")
+    from la_figures.ge_convenience import ge_tbl_svg
+
+    A = sym.Matrix([[1, 0], [2, 3]])
+
+    svg = ge_tbl_svg(
+        A,
+        show_pivots=True,
+        crop="tight",
+        padding=2,
+        toolchain_name=_pick_toolchain_name_or_skip(),
+    )
+
+    assert "<svg" in svg

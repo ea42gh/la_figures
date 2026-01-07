@@ -188,32 +188,35 @@ def _swap_matrix(m: int, i: int, j: int) -> sym.Matrix:
     return P
 
 
-def _elimination_matrix(Ab: sym.Matrix, pivot_row: int, pivot_col: int) -> sym.Matrix:
-    """Return an elementary matrix eliminating entries below a pivot.
+def _elimination_matrices(
+    Ab: sym.Matrix,
+    pivot_row: int,
+    pivot_col: int,
+) -> List[Tuple[sym.Matrix, int, sym.Expr]]:
+    """Return elementary matrices to eliminate entries below a pivot.
 
-    The returned matrix ``E`` performs:
+    Each elementary matrix eliminates a single row:
         row_r <- row_r - (Ab[r,p]/Ab[p,p]) * row_p
-    for every row r below the pivot row where the entry is nonzero.
 
-    The elimination is aggregated into a single lower-triangular elementary
-    matrix so that one :class:`GEStep` corresponds to one pivot column.
+    Returning per-row matrices matches the Julia reference behavior and
+    preserves a step-by-step elimination trace.
     """
 
     m = Ab.rows
-    E = sym.eye(m)
-
     piv = Ab[pivot_row, pivot_col]
     if not _is_nonzero(piv):
-        # Caller asked to eliminate around a zero pivot; return identity.
-        return E
+        return []
 
+    out: List[Tuple[sym.Matrix, int, sym.Expr]] = []
     for r in range(pivot_row + 1, m):
         a = Ab[r, pivot_col]
         if not _is_nonzero(a):
             continue
-        E[r, pivot_row] = -a / piv
-
-    return E
+        E = sym.eye(m)
+        factor = a / piv
+        E[r, pivot_row] = -factor
+        out.append((E, r, factor))
+    return out
 
 
 def ge_trace(
@@ -323,25 +326,34 @@ def ge_trace(
         # Elimination step (if needed): emitted as its own layer.
         # Skip the step entirely when the elimination matrix would be identity.
         # ------------------------------------------------------------------
-        needs_elim = any(_is_nonzero(cur[r, col]) for r in range(row + 1, m))
-        if needs_elim:
+        elim_ops = _elimination_matrices(cur, row, col)
+        if elim_ops:
             events.append(
                 GEEvent(
                     op="RequireElimination",
                     level=len(steps),
-                    data={"pivot_row": int(row), "pivot_col": int(col)},
+                    data={
+                        "pivot_row": int(row),
+                        "pivot_col": int(col),
+                        "count": int(len(elim_ops)),
+                    },
                 )
             )
-            Eelim = _elimination_matrix(cur, row, col)
-            cur = Eelim * cur
-            steps.append(GEStep(E=Eelim, Ab=cur, pivot=(row, col)))
-            events.append(
-                GEEvent(
-                    op="DoElimination",
-                    level=len(steps),
-                    data={"pivot_row": int(row), "pivot_col": int(col)},
+            for Eelim, target_row, factor in elim_ops:
+                cur = Eelim * cur
+                steps.append(GEStep(E=Eelim, Ab=cur, pivot=(row, col)))
+                events.append(
+                    GEEvent(
+                        op="DoElimination",
+                        level=len(steps),
+                        data={
+                            "pivot_row": int(row),
+                            "pivot_col": int(col),
+                            "target_row": int(target_row),
+                            "factor": factor,
+                        },
+                    )
                 )
-            )
         else:
             # Retain an explicit “no elimination required” event for consumers.
             events.append(
@@ -508,4 +520,5 @@ def decorate_ge(
         "path_list": [],
         "txt_with_locs": [],
         "rowechelon_paths": [],
+        "callouts": [],
     }
