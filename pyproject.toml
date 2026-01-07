@@ -1,16 +1,35 @@
 [build-system]
-requires = ["setuptools>=64"]
+requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "la_figures"
-version = "0.0.0"
+version = "0.0.1"
 description = "Linear algebra algorithms and description objects for matrixlayout figures"
-requires-python = ">=3.9"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "MIT"
 dependencies = [
   "sympy>=1.10",
   "numpy>=1.21",
 ]
+
+[project.optional-dependencies]
+render = [
+  "matrixlayout[render]>=0.0.1",
+]
+
+dev = [
+  "pytest>=8",
+  "pytest-cov>=5",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+exclude = ["tests*", "test*"]
+
+[tool.setuptools]
+include-package-data = true
 
 [tool.pytest.ini_options]
 addopts = "-q"

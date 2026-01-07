@@ -22,6 +22,7 @@ def _pick_toolchain_name_or_skip() -> str:
 @pytest.mark.render
 def test_ge_tbl_svg_smoke():
     pytest.importorskip("matrixlayout")
+    pytest.importorskip("jupyter_tikz")
     import la_figures
 
     A = sym.Matrix([[1, 0], [0, 2]])
