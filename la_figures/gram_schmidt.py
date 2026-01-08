@@ -31,7 +31,7 @@ def q_gram_schmidt(v_list: Sequence[sym.Matrix]) -> List[sym.Matrix]:
         for k in range(j):
             w_j = w_j - (w[k].dot(v_list[j])) * w[k]
 
-        nrm = sym.sqrt(w_j.dot(w_j))
+        nrm = w_j.norm()
         if nrm == 0:
             raise ValueError("Gram–Schmidt encountered a zero-norm vector")
         w.append((1 / nrm) * w_j)

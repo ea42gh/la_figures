@@ -34,3 +34,44 @@ def test_svd_spec_from_right_singular_vectors_matches_svd_tbl_spec():
         assert sym.simplify(v.dot(v) - 1) == 0
         for w in V_cols[i + 1 :]:
             assert sym.simplify(v.dot(w)) == 0
+
+
+def test_svd_spec_from_right_singular_vectors_orthonormal_full_rank_rectangular():
+    import la_figures
+
+    A = sym.Matrix([[1, 2], [3, 4], [5, 6]])
+    G = A.T * A
+    got = la_figures.svd_tbl_spec_from_right_singular_vectors(A, G.eigenvects())
+
+    V_cols = _flatten_groups(got["qvecs"])
+    assert len(V_cols) == A.cols
+    for i, v in enumerate(V_cols):
+        assert sym.simplify(v.dot(v) - 1) == 0
+        for w in V_cols[i + 1 :]:
+            assert sym.simplify(v.dot(w)) == 0
+
+
+def test_svd_tbl_spec_sigma_sorted_and_scaled():
+    import la_figures
+
+    A = sym.Matrix([[2, 0], [0, 1]])
+    spec = la_figures.svd_tbl_spec(A)
+    sigmas = spec["sigma"]
+    assert len(sigmas) == len(spec["lambda"])
+    assert sigmas == sorted(sigmas, reverse=True)
+
+    spec_scaled = la_figures.svd_tbl_spec(A, Ascale=2)
+    sigmas_scaled = spec_scaled["sigma"]
+    assert len(sigmas_scaled) == len(sigmas)
+    for s, s_scaled in zip(sigmas, sigmas_scaled):
+        assert sym.simplify(s_scaled * 2 - s) == 0
+
+
+def test_svd_spec_from_right_singular_vectors_respects_Ascale():
+    import la_figures
+
+    A = sym.Matrix([[2, 0], [0, 1]])
+    G = A.T * A
+    got = la_figures.svd_tbl_spec_from_right_singular_vectors(A, G.eigenvects(), Ascale=2)
+    expected = la_figures.svd_tbl_spec(A, Ascale=2)
+    assert got["sigma"] == expected["sigma"]

@@ -44,6 +44,18 @@ def _normalize_tex(s: str) -> str:
     return "\n".join(line.rstrip() for line in s.strip().splitlines())
 
 
+def _legacy_svd_tex(svd_tbl, mat, *, formater, Ascale=None) -> str:
+    if Ascale is None:
+        try:
+            return svd_tbl(mat).nm_latex_doc(case="SVD", formater=formater, sz=mat.shape)
+        except TypeError:
+            return svd_tbl(mat).nm_latex_doc(case="SVD", formater=formater)
+    try:
+        return svd_tbl(mat, Ascale=Ascale).nm_latex_doc(case="SVD", formater=formater, sz=mat.shape)
+    except TypeError:
+        return svd_tbl(mat, Ascale=Ascale).nm_latex_doc(case="SVD", formater=formater)
+
+
 def test_eigenproblem_tex_matches_legacy_for_simple_matrix():
     _ensure_repo_on_path()
 
@@ -85,10 +97,100 @@ def test_svd_tex_matches_legacy_for_rank_deficient_matrix():
 
     A = sym.Matrix([[3, 0], [0, 0]])
 
-    try:
-        legacy = svd_tbl(A).nm_latex_doc(case="SVD", formater=sym.latex, sz=A.shape)
-    except TypeError:
-        legacy = svd_tbl(A).nm_latex_doc(case="SVD", formater=sym.latex)
+    legacy = _legacy_svd_tex(svd_tbl, A, formater=sym.latex)
     new = eigproblem_tex(svd_tbl_spec(A), case="SVD", formater=sym.latex)
+
+    assert _normalize_tex(new) == _normalize_tex(legacy)
+
+
+def test_svd_tex_matches_legacy_for_rectangular_full_rank_matrix():
+    _ensure_repo_on_path()
+
+    try:
+        from itikz.nicematrix import svd_tbl  # type: ignore
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import svd_tbl_spec
+    from matrixlayout import eigproblem_tex
+
+    A = sym.Matrix([[1, 2], [3, 4], [5, 6]])
+
+    legacy = _legacy_svd_tex(svd_tbl, A, formater=sym.latex)
+    new = eigproblem_tex(svd_tbl_spec(A), case="SVD", formater=sym.latex)
+
+    assert _normalize_tex(new) == _normalize_tex(legacy)
+
+
+def test_svd_tex_matches_legacy_for_rectangular_rank_deficient_matrix():
+    _ensure_repo_on_path()
+
+    try:
+        from itikz.nicematrix import svd_tbl  # type: ignore
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import svd_tbl_spec
+    from matrixlayout import eigproblem_tex
+
+    A = sym.Matrix([[1, 2], [2, 4], [3, 6]])
+
+    legacy = _legacy_svd_tex(svd_tbl, A, formater=sym.latex)
+    new = eigproblem_tex(svd_tbl_spec(A), case="SVD", formater=sym.latex)
+
+    assert _normalize_tex(new) == _normalize_tex(legacy)
+
+
+def test_svd_tex_matches_legacy_for_wide_matrix():
+    _ensure_repo_on_path()
+
+    try:
+        from itikz.nicematrix import svd_tbl  # type: ignore
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import svd_tbl_spec
+    from matrixlayout import eigproblem_tex
+
+    A = sym.Matrix([[1, 2, 3], [4, 5, 6]])
+
+    legacy = _legacy_svd_tex(svd_tbl, A, formater=sym.latex)
+    new = eigproblem_tex(svd_tbl_spec(A), case="SVD", formater=sym.latex)
+
+    assert _normalize_tex(new) == _normalize_tex(legacy)
+
+
+def test_svd_tex_matches_legacy_with_Ascale():
+    _ensure_repo_on_path()
+
+    try:
+        from itikz.nicematrix import svd_tbl  # type: ignore
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import svd_tbl_spec
+    from matrixlayout import eigproblem_tex
+
+    A = sym.Matrix([[2, 0], [0, 1]])
+    Ascale = sym.Integer(2)
+
+    legacy = _legacy_svd_tex(svd_tbl, A, formater=sym.latex, Ascale=Ascale)
+    new = eigproblem_tex(svd_tbl_spec(A, Ascale=Ascale), case="SVD", formater=sym.latex)
 
     assert _normalize_tex(new) == _normalize_tex(legacy)

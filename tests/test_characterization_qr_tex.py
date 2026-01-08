@@ -1,0 +1,180 @@
+"""Characterization tests: legacy itikz QR vs migrated matrixlayout QR."""
+
+from __future__ import annotations
+
+import sys
+
+
+def _ensure_repo_on_path() -> None:
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parents[2]
+    itikz_root = root / "itikz"
+
+    for p in (root, itikz_root):
+        s = str(p)
+        if s in sys.path:
+            sys.path.remove(s)
+
+    for p in (root, itikz_root):
+        sys.path.insert(0, str(p))
+
+
+def _normalize_block(s: str) -> str:
+    out = []
+    for line in s.splitlines():
+        stripped = line.strip()
+        if not stripped:
+            continue
+        if stripped.startswith("%"):
+            continue
+        if stripped.startswith(r"\begin{NiceArray"):
+            continue
+        if stripped.startswith(r"\end{NiceArray"):
+            continue
+        if stripped.startswith(r"\CodeBefore"):
+            continue
+        if stripped.startswith(r"\Body"):
+            continue
+        if stripped.startswith(r"\CodeAfter"):
+            continue
+        if stripped.startswith(r"\begin{tikzpicture}"):
+            continue
+        if stripped.startswith(r"\end{tikzpicture}"):
+            continue
+        if stripped.startswith(r"\begin{scope}"):
+            continue
+        if stripped.startswith(r"\end{scope}"):
+            continue
+        if stripped == "$":
+            continue
+        cleaned = stripped.replace("%", "").strip()
+        if cleaned:
+            out.append(cleaned)
+    return "\n".join(out)
+
+
+def _nicearray_block(tex: str) -> str:
+    start = tex.find(r"\begin{NiceArray")
+    if start < 0:
+        return ""
+    end = tex.find(r"\end{NiceArray}", start)
+    if end < 0:
+        return tex[start:]
+    return tex[start : end + len(r"\end{NiceArray}")]
+
+
+def _legacy_qr_tex(matrices):
+    import itikz
+
+    nM = itikz.nicematrix
+    m = nM.MatrixGridLayout(matrices, extra_rows=[1, 0, 0, 0])
+    m.preamble = nM.preamble + "\n" + r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n"
+
+    n = matrices[0][2].shape[1]
+    m.array_format_string_list()
+    m.array_of_tex_entries(formater=str)
+
+    brown = nM.make_decorator(text_color="brown", bf=True)
+    l_WtA = [(1, 2), [(i, j) for i in range(matrices[1][2].shape[0]) for j in range(matrices[1][2].shape[0]) if i > j]]
+    l_WtW = [(1, 3), [(i, j) for i in range(matrices[1][3].shape[0]) for j in range(matrices[1][3].shape[0]) if i != j]]
+    for spec in (l_WtA, l_WtW):
+        m.decorate_tex_entries(*spec[0], brown, entries=spec[1])
+
+    red = nM.make_decorator(text_color="red", bf=True)
+    red_rgt = nM.make_decorator(text_color="red", bf=True, move_right=True)
+    m.add_row_above(
+        0,
+        2,
+        [red(f"v_{i+1}") for i in range(n)] + [red(f"w_{i+1}") for i in range(n)],
+        formater=lambda a: a,
+    )
+    m.add_col_left(1, 1, [red_rgt(f"w^t_{i+1}") for i in range(n)], formater=lambda a: a)
+
+    dec = nM.make_decorator(bf=True, delim="$")
+    name_specs = [
+        [(0, 2), "al", dec("A")],
+        [(0, 3), "ar", dec("W")],
+        [(1, 1), "al", dec("W^t")],
+        [(1, 2), "al", dec("W^t A")],
+        [(1, 3), "ar", dec("W^t W")],
+        [(2, 0), "al", dec(r"S = \left( W^t W \right)^{-\tfrac{1}{2}}")],
+        [(2, 1), "br", dec(r"Q^t = S W^t")],
+        [(2, 2), "br", dec(r"R = S W^t A")],
+    ]
+    m.nm_submatrix_locs("QR", color="blue", name_specs=name_specs)
+    m.tex_repr(blockseps=r"\noalign{\vskip3mm} ")
+    return m.nm_latexdoc(template=nM.GE_TEMPLATE, fig_scale=None)
+
+
+def _compare_blocks(legacy: str, new: str) -> bool:
+    return _normalize_block(_nicearray_block(legacy)) == _normalize_block(_nicearray_block(new))
+
+
+def test_qr_tex_matches_legacy_for_2x2():
+    _ensure_repo_on_path()
+    try:
+        import itikz  # noqa: F401
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import compute_qr_matrices
+    from matrixlayout.qr import qr_grid_tex
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    W = sym.Matrix([[1, 0], [0, 1]])
+    matrices = compute_qr_matrices(A, W)
+
+    legacy = _legacy_qr_tex(matrices)
+    new = qr_grid_tex(matrices=matrices, formater=str)
+    assert _compare_blocks(legacy, new)
+
+
+def test_qr_tex_matches_legacy_for_3x2():
+    _ensure_repo_on_path()
+    try:
+        import itikz  # noqa: F401
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import compute_qr_matrices
+    from matrixlayout.qr import qr_grid_tex
+
+    A = sym.Matrix([[1, 2], [3, 4], [5, 6]])
+    W = sym.Matrix([[1, 0], [0, 1], [0, 0]])
+    matrices = compute_qr_matrices(A, W)
+
+    legacy = _legacy_qr_tex(matrices)
+    new = qr_grid_tex(matrices=matrices, formater=str)
+    assert _compare_blocks(legacy, new)
+
+
+def test_qr_tex_matches_legacy_for_rank_deficient():
+    _ensure_repo_on_path()
+    try:
+        import itikz  # noqa: F401
+    except Exception:
+        import pytest
+
+        pytest.skip("legacy itikz.nicematrix not importable")
+
+    import sympy as sym
+
+    from la_figures import compute_qr_matrices
+    from matrixlayout.qr import qr_grid_tex
+
+    A = sym.Matrix([[1, 2], [2, 4]])
+    W = sym.Matrix([[1, 2], [2, 4]])
+    matrices = compute_qr_matrices(A, W)
+
+    legacy = _legacy_qr_tex(matrices)
+    new = qr_grid_tex(matrices=matrices, formater=str)
+    assert _compare_blocks(legacy, new)

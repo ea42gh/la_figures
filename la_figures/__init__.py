@@ -20,6 +20,8 @@ from .convenience import (
     svd_tbl_svg,
     svd_tbl_tex,
 )
+from .qr import compute_qr_matrices, gram_schmidt_qr_matrices, qr_tbl_layout_spec, qr_tbl_spec
+from .convenience_qr import qr as qr_svg, qr_tbl_bundle as qr_tbl_bundle, qr_tbl_tex, qr_tbl_svg, gram_schmidt_qr
 from .backsub import (
     backsub_trace_from_ref,
     backsub_solution_tex,
@@ -43,6 +45,14 @@ __all__ = [
     "svd_tbl_tex",
     "svd_tbl_svg",
     "svd_tbl_bundle",
+    "compute_qr_matrices",
+    "gram_schmidt_qr_matrices",
+    "qr_tbl_spec",
+    "qr_tbl_layout_spec",
+    "qr_tbl_tex",
+    "qr_tbl_svg",
+    "qr_tbl_bundle",
+    "gram_schmidt_qr",
     "backsub_trace_from_ref",
     "backsub_solution_tex",
     "backsub_system_tex",
@@ -55,5 +65,6 @@ __all__ = [
     "ge_tbl_bundle",
     "ge",
     "ge_svg",
+    "qr_svg",
     "latexify",
 ]

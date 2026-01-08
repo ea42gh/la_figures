@@ -19,6 +19,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .ge import GETrace, decorate_ge, ge_trace, trace_to_layer_matrices
+from .formatting import latexify
 
 
 def _matrix_shape(mat: Any) -> Tuple[int, int]:
@@ -553,7 +554,7 @@ def ge(
     matrices: Sequence[Sequence[Any]],
     *,
     Nrhs: Any = 0,
-    formater: Any = str,
+    formater: Any = latexify,
     pivot_list: Optional[Sequence[Any]] = None,
     bg_for_entries: Optional[Any] = None,
     variable_colors: Sequence[str] = ("red", "blue"),
@@ -571,6 +572,7 @@ def ge(
     tmp_dir: Optional[str] = None,
     keep_file: Optional[str] = None,
     output_dir: Optional[Any] = None,
+    frame: Any = None,
     **render_opts: Any,
 ) -> str:
     """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
@@ -688,6 +690,7 @@ def ge(
         create_medium_nodes=True if ref_path_list else None,
         fig_scale=fig_scale,
         output_dir=output_dir,
+        frame=frame,
         **render_opts,
     )
 
@@ -815,6 +818,7 @@ def ge_tbl_svg(
     toolchain_name: Optional[str] = None,
     crop: Optional[str] = None,
     padding: Tuple[int, int, int, int] = (2, 2, 2, 2),
+    frame: Any = None,
     callouts: Optional[Any] = None,
     fig_scale: Optional[Any] = None,
 ) -> str:
@@ -840,4 +844,4 @@ def ge_tbl_svg(
 
     from matrixlayout.ge import ge_grid_svg
 
-    return ge_grid_svg(toolchain_name=toolchain_name, crop=crop, padding=padding, **spec)
+    return ge_grid_svg(toolchain_name=toolchain_name, crop=crop, padding=padding, frame=frame, **spec)

@@ -31,3 +31,15 @@ def test_svd_tbl_spec_has_sz_and_sigma():
     assert spec["sz"] == (2, 2)
     assert "sigma" in spec and len(spec["sigma"]) >= 1
     assert "qvecs" in spec and "uvecs" in spec
+
+
+def test_svd_tbl_spec_rectangular_rank_deficient_adds_left_nullspace():
+    from la_figures import svd_tbl_spec
+
+    A = sym.Matrix([[1, 2], [2, 4], [3, 6]])
+    spec = svd_tbl_spec(A)
+    assert spec["sz"] == (3, 2)
+    rank = int(A.rank())
+    if spec["uvecs"]:
+        tail = spec["uvecs"][-1]
+        assert len(tail) == A.rows - rank
