@@ -103,6 +103,146 @@ def _grid_cell_coord(
     return f"({rr}-{cc})"
 
 
+def _legacy_array_name_specs(
+    n_rows: int,
+    lhs: str,
+    rhs: Sequence[str],
+    *,
+    start_index: Optional[int],
+) -> List[Tuple[Tuple[int, int], str, str]]:
+    names: List[List[str]] = [["", ""] for _ in range(n_rows)]
+
+    def _pe(i: int) -> str:
+        if start_index is None:
+            return " ".join([f" {lhs}" for _ in range(i, 0, -1)])
+        return " ".join([f" {lhs}_{k + start_index - 1}" for k in range(i, 0, -1)])
+
+    def _pa(e_prod: str, i: int) -> str:
+        rr = list(rhs)
+        if i > 0 and rr and rr[-1] == "I":
+            rr[-1] = ""
+        return r" \mid ".join([e_prod + " " + k for k in rr])
+
+    for i in range(n_rows):
+        if start_index is None:
+            names[i][0] = f"{lhs}"
+        else:
+            names[i][0] = f"{lhs}_{start_index + i - 1}"
+
+        e_prod = _pe(i)
+        names[i][1] = _pa(e_prod, i)
+
+    if len(rhs) > 1:
+        for i in range(n_rows):
+            names[i][1] = r"\left( " + names[i][1] + r" \right)"
+
+    for i in range(n_rows):
+        for j in range(2):
+            names[i][j] = r"\mathbf{ " + names[i][j] + " }"
+
+    terms: List[Tuple[Tuple[int, int], str, str]] = [((0, 1), "ar", "$" + names[0][1] + "$")]
+    for i in range(1, n_rows):
+        terms.append(((i, 0), "al", "$" + names[i][0] + "$"))
+        terms.append(((i, 1), "ar", "$" + names[i][1] + "$"))
+    return terms
+
+
+def _legacy_name_specs_to_paths(
+    matrices: Sequence[Sequence[Any]],
+    name_specs: Sequence[Tuple[Tuple[int, int], str, str]],
+    *,
+    color: str = "blue",
+) -> List[str]:
+    from matrixlayout.ge import ge_grid_submatrix_spans
+
+    spans = ge_grid_submatrix_spans(matrices)
+    name_map = {(s.block_row, s.block_col): s.name for s in spans}
+
+    ar = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north east) + (0.02,0.02) $) -- +(0.6cm,0.3cm)    node[COLOR, above right=-3pt]{TXT};"
+    al = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north west) + (-0.02,0.02) $) -- +(-0.6cm,0.3cm) node[COLOR, above left=-3pt] {TXT};"
+    a = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north) + (0,0) $) -- +(0cm,0.6cm) node[COLOR, above=1pt] {TXT};"
+
+    bl = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south west) + (-0.02,-0.02) $) -- +(-0.6cm,-0.3cm)  node[COLOR, below left=-3pt]{TXT};"
+    br = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south east) + (0.02,-0.02) $) -- +(0.6cm,-0.3cm)   node[COLOR, below right=-3pt]{TXT};"
+    b = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south) + (0,0) $) -- +(0cm,-0.6cm) node[COLOR, below=1pt] {TXT};"
+
+    out: List[str] = []
+    for (gM, gN), pos, txt in name_specs:
+        name = name_map.get((gM, gN))
+        if not name:
+            continue
+        t = None
+        if pos == "a":
+            t = a
+        elif pos == "al":
+            t = al
+        elif pos == "ar":
+            t = ar
+        elif pos == "b":
+            t = b
+        elif pos == "bl":
+            t = bl
+        elif pos == "br":
+            t = br
+        if t is None:
+            continue
+        t = t.replace("COLOR", color).replace("NAME", name).replace("TXT", txt)
+        out.append(t)
+    return out
+
+
+def _legacy_ref_path_list_to_rowechelon_paths(
+    matrices: Sequence[Sequence[Any]],
+    ref_path_list: Sequence[Any],
+) -> List[str]:
+    out: List[str] = []
+    for spec in ref_path_list:
+        if not isinstance(spec, (list, tuple)) or len(spec) < 3:
+            continue
+        gM, gN = int(spec[0]), int(spec[1])
+        pivots = spec[2]
+        case = spec[3] if len(spec) > 3 else "hh"
+        color = spec[4] if len(spec) > 4 else "violet,line width=0.4mm"
+        _, _, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+        block_heights, block_widths, _, _ = _grid_offsets(matrices, index_base=1)
+        if gM >= len(block_heights) or gN >= len(block_widths):
+            continue
+        shape = (block_heights[gM], block_widths[gN])
+        if not pivots:
+            continue
+
+        cur = pivots[0]
+        ll = [cur] if (case in ("vv", "vh")) else []
+        for nxt in pivots[1:]:
+            if cur[0] != nxt[0]:
+                cur = (cur[0] + 1, cur[1])
+                ll.append(cur)
+            if nxt[1] != cur[1]:
+                cur = (cur[0], nxt[1])
+                ll.append(cur)
+            if cur != nxt:
+                ll.append(nxt)
+            cur = nxt
+
+        if len(ll) == 0 and case == "hv":
+            ll = [(pivots[0][0] + 1, pivots[0][0]), (shape[0], pivots[0][1])]
+
+        if case in ("hh", "vh"):
+            if cur[0] != shape[0]:
+                cur = (cur[0] + 1, cur[1])
+                ll.append(cur)
+            ll.append((cur[0], shape[1]))
+        else:
+            ll.append((shape[0], cur[1]))
+
+        coords = [
+            _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i), j=int(j), index_base=1)
+            for (i, j) in ll
+        ]
+        out.append(rf"\draw[{color}] " + " -- ".join(coords) + ";")
+    return out
+
+
 def _legacy_pivot_list_to_pivot_locs(
     matrices: Sequence[Sequence[Any]],
     pivot_list: Sequence[Any],
@@ -383,7 +523,6 @@ def ge(
     """Compatibility wrapper for legacy ``itikz.nicematrix.ge``."""
 
     unsupported = {
-        "array_names": array_names,
         "func": func,
         "tmp_dir": tmp_dir,
         "keep_file": keep_file,
@@ -462,28 +601,17 @@ def ge(
     rowechelon_paths: List[str] = []
     if ref_path_list:
         specs = ref_path_list if isinstance(ref_path_list, list) else [ref_path_list]
-        for spec in specs:
-            if not isinstance(spec, (list, tuple)) or len(spec) < 2:
-                continue
-            gM, gN = spec[0], spec[1]
-            pivots = spec[2] if len(spec) > 2 else []
-            case = spec[3] if len(spec) > 3 else "hh"
-            color = spec[4] if len(spec) > 4 else "violet,line width=0.4mm"
-            coords = [
-                _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i), j=int(j), index_base=1)
-                for (i, j) in pivots
-            ]
-            if not coords:
-                continue
-            block_heights, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
-            last_row = row_starts[int(gM)] + block_heights[int(gM)] - 1
-            last_col = col_starts[int(gN)] + block_widths[int(gN)] - 1
-            last_pivot = pivots[-1]
-            if case in ("hh", "vh"):
-                coords.append(f"({row_starts[int(gM)] + int(last_pivot[0])}-{last_col})")
-            if case in ("vv", "hv"):
-                coords.append(f"({last_row}-{col_starts[int(gN)] + int(last_pivot[1])})")
-            rowechelon_paths.append(rf"\draw[{color}] " + " -- ".join(coords) + ";")
+        rowechelon_paths.extend(_legacy_ref_path_list_to_rowechelon_paths(matrices, specs))
+
+    if array_names is not None:
+        try:
+            lhs, rhs = array_names
+            rhs_list = list(rhs)
+        except Exception:
+            lhs, rhs_list = "E", ["A"]
+        n_rows = len(matrices or [])
+        name_specs = _legacy_array_name_specs(n_rows, str(lhs), [str(x) for x in rhs_list], start_index=start_index)
+        rowechelon_paths.extend(_legacy_name_specs_to_paths(matrices, name_specs, color="blue"))
 
     from matrixlayout.ge import ge_grid_svg
 
