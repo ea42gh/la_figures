@@ -34,6 +34,10 @@ def _submatrix_names(tex: str):
     return re.findall(r"name=([A-Za-z0-9_]+)", tex)
 
 
+def _submatrix_spans(tex: str):
+    return re.findall(r"\\SubMatrix\(\{([^}]+)\}\{([^}]+)\}\)", tex)
+
+
 def test_ge_submatrix_names_match_legacy_no_rhs():
     import la_figures
     from matrixlayout.ge import ge_grid_tex
@@ -47,8 +51,11 @@ def test_ge_submatrix_names_match_legacy_no_rhs():
 
     legacy_names = _submatrix_names(legacy)
     new_names = _submatrix_names(new)
+    legacy_spans = _submatrix_spans(legacy)
+    new_spans = _submatrix_spans(new)
     assert len(new_names) == len(legacy_names)
     assert len(set(new_names)) == len(new_names)
+    assert new_spans == legacy_spans
 
 
 def test_ge_submatrix_names_match_legacy_with_rhs():
@@ -65,5 +72,8 @@ def test_ge_submatrix_names_match_legacy_with_rhs():
 
     legacy_names = _submatrix_names(legacy)
     new_names = _submatrix_names(new)
+    legacy_spans = _submatrix_spans(legacy)
+    new_spans = _submatrix_spans(new)
     assert len(new_names) == len(legacy_names)
     assert len(set(new_names)) == len(new_names)
+    assert new_spans == legacy_spans
