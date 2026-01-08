@@ -16,9 +16,90 @@ so Julia can later compute traces/decorations and call the same renderer.
 
 from __future__ import annotations
 
-from typing import Any, Dict, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .ge import GETrace, decorate_ge, ge_trace, trace_to_layer_matrices
+
+
+def _matrix_shape(mat: Any) -> Tuple[int, int]:
+    if mat is None:
+        return (0, 0)
+    if hasattr(mat, "shape"):
+        try:
+            shp = mat.shape
+            if len(shp) == 2:
+                return int(shp[0]), int(shp[1])
+        except Exception:
+            pass
+    if isinstance(mat, (list, tuple)):
+        rows = list(mat)
+        if not rows:
+            return (0, 0)
+        if isinstance(rows[0], (list, tuple)):
+            return (len(rows), max((len(r) for r in rows), default=0))
+        return (len(rows), 1)
+    return (0, 0)
+
+
+def _legacy_pivot_list_to_pivot_locs(
+    matrices: Sequence[Sequence[Any]],
+    pivot_list: Sequence[Any],
+    *,
+    index_base: int = 1,
+    pivot_style: str = "",
+) -> List[Tuple[str, str]]:
+    grid: List[List[Any]] = [list(r) for r in (matrices or [])]
+    if not grid:
+        return []
+    n_block_rows = len(grid)
+    n_block_cols = max((len(r) for r in grid), default=0)
+    for r in range(n_block_rows):
+        if len(grid[r]) < n_block_cols:
+            grid[r].extend([None] * (n_block_cols - len(grid[r])))
+
+    block_heights = [0] * n_block_rows
+    block_widths = [0] * n_block_cols
+    for br in range(n_block_rows):
+        for bc in range(n_block_cols):
+            h, w = _matrix_shape(grid[br][bc])
+            block_heights[br] = max(block_heights[br], h)
+            block_widths[bc] = max(block_widths[bc], w)
+
+    max_h = max(block_heights) if block_heights else 0
+    for bc in range(n_block_cols):
+        if block_widths[bc] == 0 and max_h > 0:
+            block_widths[bc] = max_h
+
+    row_starts: List[int] = []
+    acc = int(index_base)
+    for h in block_heights:
+        row_starts.append(acc)
+        acc += h
+    col_starts: List[int] = []
+    acc = int(index_base)
+    for w in block_widths:
+        col_starts.append(acc)
+        acc += w
+
+    out: List[Tuple[str, str]] = []
+    for spec in pivot_list:
+        if not spec or len(spec) < 2:
+            continue
+        grid_pos, pivots = spec[0], spec[1]
+        if not isinstance(grid_pos, (list, tuple)) or len(grid_pos) != 2:
+            continue
+        gM, gN = int(grid_pos[0]), int(grid_pos[1])
+        if gM < 0 or gN < 0:
+            continue
+        if gM >= len(row_starts) or gN >= len(col_starts):
+            continue
+        r0 = row_starts[gM]
+        c0 = col_starts[gN]
+        for (i, j) in pivots:
+            rr = r0 + int(i)
+            cc = c0 + int(j)
+            out.append((f"({rr}-{cc})({rr}-{cc})", pivot_style))
+    return out
 
 
 def _build_typed_layout_spec(
@@ -249,6 +330,66 @@ def ge_tbl_layout_spec(
         "outer_hspace_mm": int(outer_hspace_mm),
         "cell_align": str(cell_align),
     }
+
+
+def ge(
+    matrices: Sequence[Sequence[Any]],
+    *,
+    Nrhs: Any = 0,
+    formater: Any = str,
+    pivot_list: Optional[Sequence[Any]] = None,
+    bg_for_entries: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "blue"),
+    pivot_text_color: str = "red",
+    ref_path_list: Optional[Any] = None,
+    comment_list: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    array_names: Optional[Any] = None,
+    start_index: Optional[int] = 1,
+    func: Optional[Any] = None,
+    fig_scale: Optional[Any] = None,
+    tmp_dir: Optional[str] = None,
+    keep_file: Optional[str] = None,
+    **render_opts: Any,
+) -> str:
+    """Compatibility wrapper for legacy ``itikz.nicematrix.ge``.
+
+    Supported: matrices, Nrhs, formater, pivot_list (as pivot boxes), fig_scale,
+    and render options (crop/padding/toolchain_name).
+    """
+
+    unsupported = {
+        "bg_for_entries": bg_for_entries,
+        "ref_path_list": ref_path_list,
+        "comment_list": comment_list,
+        "variable_summary": variable_summary,
+        "array_names": array_names,
+        "func": func,
+        "tmp_dir": tmp_dir,
+        "keep_file": keep_file,
+    }
+    missing = [k for k, v in unsupported.items() if v not in (None, [], {}, ())]
+    if missing:
+        raise NotImplementedError(f"Legacy options not yet supported in new GE: {', '.join(missing)}")
+
+    _ = (variable_colors, start_index)
+    pivot_style = f"draw={pivot_text_color}" if pivot_text_color else ""
+    pivot_locs = (
+        _legacy_pivot_list_to_pivot_locs(matrices, pivot_list, index_base=1, pivot_style=pivot_style)
+        if pivot_list
+        else None
+    )
+
+    from matrixlayout.ge import ge_grid_svg
+
+    return ge_grid_svg(
+        matrices=matrices,
+        Nrhs=Nrhs,
+        formater=formater,
+        pivot_locs=pivot_locs,
+        fig_scale=fig_scale,
+        **render_opts,
+    )
 
 
 def ge_tbl_bundle(
