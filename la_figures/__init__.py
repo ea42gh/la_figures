@@ -28,6 +28,7 @@ from .backsub import (
 from . import ge as ge
 from .ge import ge_trace, trace_to_layer_matrices
 from .convenience_ge import ge as ge_svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
+from .formatting import latexify
 
 __all__ = [
     "EigenDecomposition",
@@ -54,4 +55,5 @@ __all__ = [
     "ge_tbl_bundle",
     "ge",
     "ge_svg",
+    "latexify",
 ]

@@ -85,7 +85,10 @@ def test_svd_tex_matches_legacy_for_rank_deficient_matrix():
 
     A = sym.Matrix([[3, 0], [0, 0]])
 
-    legacy = svd_tbl(A).nm_latex_doc(case="SVD", formater=sym.latex, sz=A.shape)
+    try:
+        legacy = svd_tbl(A).nm_latex_doc(case="SVD", formater=sym.latex, sz=A.shape)
+    except TypeError:
+        legacy = svd_tbl(A).nm_latex_doc(case="SVD", formater=sym.latex)
     new = eigproblem_tex(svd_tbl_spec(A), case="SVD", formater=sym.latex)
 
     assert _normalize_tex(new) == _normalize_tex(legacy)

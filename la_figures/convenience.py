@@ -13,7 +13,7 @@ from __future__ import annotations
 
 from typing import Any, Dict, Optional, Tuple, Union
 
-import sympy as sym
+from .formatting import latexify
 
 from .eig import eig_tbl_spec
 from .svd import svd_tbl_spec
@@ -88,7 +88,7 @@ def eig_tbl_tex(
     eig_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
     case: Optional[Any] = None,
-    formater: Any = sym.latex,
+    formater: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -130,7 +130,7 @@ def eig_tbl_svg(
     eig_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
     case: Optional[Any] = None,
-    formater: Any = sym.latex,
+    formater: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -206,7 +206,7 @@ def svd_tbl_tex(
     eig_digits: Optional[int] = None,
     sigma_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
-    formater: Any = sym.latex,
+    formater: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -250,7 +250,7 @@ def svd_tbl_svg(
     eig_digits: Optional[int] = None,
     sigma_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
-    formater: Any = sym.latex,
+    formater: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,

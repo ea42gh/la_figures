@@ -17,6 +17,8 @@ from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sympy as sym
 
+from .formatting import latexify
+
 from ._sympy_utils import to_sympy_col, to_sympy_matrix
 
 
@@ -48,10 +50,10 @@ def _bs_rhs(
     factor = sym.Integer(1) / pivot
 
     if factor == 1:
-        return sym.latex(t)
+        return latexify(t)
     if factor == -1:
-        return f"- \\left( {sym.latex(t)} \\right)"
-    return f"{sym.latex(factor)} \\left( {sym.latex(t)} \\right)"
+        return f"- \\left( {latexify(t)} \\right)"
+    return f"{latexify(factor)} \\left( {latexify(t)} \\right)"
 
 
 def backsub_trace_from_ref(
@@ -153,14 +155,14 @@ def backsub_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
             if v > 0:
                 if v == 1:
                     return [" + ", f"{var_name}_{j}"]
-                return [" + ", sym.latex(v), f"{var_name}_{j}"]
+                return [" + ", latexify(v), f"{var_name}_{j}"]
             if v < 0:
                 if v == -1:
                     return [" - ", f"{var_name}_{j}"]
-                return [" - ", sym.latex(-v), f"{var_name}_{j}"]
+                return [" - ", latexify(-v), f"{var_name}_{j}"]
             return [""]
         except Exception:
-            return [" + ", sym.latex(v), f"{var_name}_{j}"]
+            return [" + ", latexify(v), f"{var_name}_{j}"]
 
     eqs: List[str] = []
     for i in range(A.rows):
@@ -173,7 +175,7 @@ def backsub_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
             terms = [" 0 "]
         if terms and terms[0] == " + ":
             terms = terms[1:]
-        eqs.append("".join(terms) + " = " + sym.latex(bb[i, 0]))
+        eqs.append("".join(terms) + " = " + latexify(bb[i, 0]))
 
     vars_sorted = "".join(sorted(var))
     return r"\sysdelim.\}\systeme[" + vars_sorted + "]{ " + ",".join(eqs) + "}"
@@ -221,7 +223,7 @@ def backsub_solution_tex(
         sol = (A[0:rank, pivot_cols] ** -1) * b[0:rank, 0]
         for i, c in enumerate(pivot_cols):
             ps[c, 0] = sol[i, 0]
-    ptxt = lft + r" \\ ".join([sym.latex(ps[i, 0]) for i in range(A.cols)]) + rgt
+    ptxt = lft + r" \\ ".join([latexify(ps[i, 0]) for i in range(A.cols)]) + rgt
 
     # Homogeneous solution basis
     if free_cols:
@@ -233,7 +235,7 @@ def backsub_solution_tex(
 
         h_terms: List[str] = []
         for j, free_col in enumerate(free_cols):
-            hvec = lft + r" \\ ".join([sym.latex(hs[i, j]) for i in range(A.cols)]) + rgt
+            hvec = lft + r" \\ ".join([latexify(hs[i, j]) for i in range(A.cols)]) + rgt
             h_terms.append(f"{param_name}_{free_col+1} " + hvec)
         htxt = " + ".join(h_terms)
         plus = " + "
