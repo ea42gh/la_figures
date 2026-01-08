@@ -79,6 +79,7 @@ def test_ge_legacy_wrapper_supports_ref_path_list():
         out = ge(
             matrices,
             ref_path_list=[(1, 1, [(0, 0), (1, 1)], "hh")],
+            output_dir="tmp",
         )
     finally:
         ml_ge.ge_grid_svg = ge_svg_orig

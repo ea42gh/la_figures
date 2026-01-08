@@ -155,7 +155,7 @@ def _legacy_name_specs_to_callouts(
 ) -> List[Dict[str, Any]]:
     from matrixlayout.ge import ge_grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices)
+    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=True)
     name_map = {(s.block_row, s.block_col): s.name for s in spans}
 
     def _strip_math(s: str) -> Tuple[str, bool]:
@@ -186,6 +186,9 @@ def _legacy_name_specs_to_callouts(
                 "label": label,
                 "side": side,
                 "anchor": anchor,
+                "angle_deg": -35.0,
+                "length_mm": 6.0,
+                "label_shift_y_mm": 1.0,
                 "color": color,
                 "math_mode": had_math,
             }
@@ -200,7 +203,7 @@ def _legacy_ref_path_list_to_rowechelon_paths(
     out: List[str] = []
     from matrixlayout.ge import ge_grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices)
+    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=True)
     span_map = {(s.block_row, s.block_col): s for s in spans}
     for spec in ref_path_list:
         if not isinstance(spec, (list, tuple)) or len(spec) < 3:
@@ -208,7 +211,7 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         gM, gN = int(spec[0]), int(spec[1])
         pivots = spec[2]
         case = spec[3] if len(spec) > 3 else "hh"
-        color = spec[4] if len(spec) > 4 else "violet,line width=0.4mm"
+        color = spec[4] if len(spec) > 4 else "blue,line width=0.4mm"
         adj = spec[5] if len(spec) > 5 else 0.1
         span = span_map.get((gM, gN))
         if span is None:
@@ -221,29 +224,15 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         tlc = span.col_start - 1
         name = span.name
 
-        def coords(i: int, j: int) -> str:
-            if i >= shape[0]:
-                if gN == 0 and j == 0:
-                    x = r"\x1"
-                else:
-                    x = r"\x2" if j >= shape[1] else r"\x4"
-                y = r"\y2"
-                p = f"({x},{y})"
-            elif j >= shape[1]:
-                x = r"\x2"
-                y = r"\y4"
-                p = f"({x},{y})"
-            elif j == 0:
-                x = r"\x1"
-                y = r"\y1" if i == 0 else r"\y3"
-                p = f"({x},{y})"
-            else:
-                p = f"({i + 1 + tlr}-|{j + 1 + tlc})"
+        pad_pt = 2.0
 
-            if j != 0 and j < shape[1] and adj != 0:
-                p = f"($ {p} + ({adj:2},0) $)"
-
-            return p
+        def _corner_expr(i: int, j: int, which: str) -> str:
+            ii = min(max(i, 0), shape[0] - 1)
+            jj = min(max(j, 0), shape[1] - 1)
+            base = f"({ii + 1 + tlr}-{jj + 1 + tlc}.{which})"
+            dx = -pad_pt if "west" in which else pad_pt
+            dy = pad_pt if "north" in which else -pad_pt
+            return f"($ {base} + ({dx}pt,{dy}pt) $)"
 
         cur = pivots[0]
         ll = [cur] if (case in ("vv", "vh")) else []
@@ -269,21 +258,36 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         else:
             ll.append((shape[0], cur[1]))
 
-        corners = rf"let \p1 = ({name}.north west), \p2 = ({name}.south east), "
+        if not pivots:
+            continue
 
-        if (case == "vv") or (case == "vh"):
-            p3 = rf"\p3 = ({ll[1][0] + tlr + 1}-|{ll[1][1] + tlc + 1}), "
+        coord_defs: List[str] = []
+        for idx, (pi, pj) in enumerate(pivots):
+            coord_defs.append(f"{_corner_expr(pi, pj, 'north west')} coordinate (p{idx}tl)")
+            coord_defs.append(f"{_corner_expr(pi, pj, 'south west')} coordinate (p{idx}bl)")
+        coord_defs.append(f"({name}.south east) coordinate (pright)")
+        pre = r"\path " + " ".join(coord_defs) + "; "
+
+        pts: List[str] = []
+        if case in ("vv", "vh"):
+            pts.append("(p0tl)")
+            pts.append("(p0bl)")
         else:
-            p3 = rf"\p3 = ({ll[0][0] + tlr + 1}-|{ll[0][1] + tlc + 1}), "
+            pts.append("(p0bl)")
 
-        if (case == "vh") or (case == "hh"):
-            i, j = ll[-2]
-            p4 = rf"\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
+        for k in range(len(pivots) - 1):
+            if pivots[k][1] != pivots[k + 1][1]:
+                pts.append(f"(p{k}bl -| p{k + 1}tl)")
+            if pivots[k][0] != pivots[k + 1][0]:
+                pts.append(f"(p{k + 1}bl)")
+
+        last_idx = len(pivots) - 1
+        if case in ("vh", "hh"):
+            pts.append(f"(p{last_idx}bl -| pright)")
         else:
-            i, j = ll[-1]
-            p4 = rf"\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
+            pts.append(f"(pright |- p{last_idx}bl)")
 
-        cmd = rf"\tikz \draw[{color}] " + corners + p3 + p4 + " -- ".join([coords(*p) for p in ll]) + ";"
+        cmd = pre + rf"\draw[{color}] " + " -- ".join(pts) + ";"
         out.append(cmd)
     return out
 
@@ -556,16 +560,20 @@ def ge(
     pivot_text_color: str = "red",
     ref_path_list: Optional[Any] = None,
     comment_list: Optional[Any] = None,
+    comment_shift_x_mm: float = 20.0,
+    comment_shift_y_mm: float = 0.0,
     variable_summary: Optional[Any] = None,
     array_names: Optional[Any] = None,
     start_index: Optional[int] = 1,
     func: Optional[Any] = None,
     fig_scale: Optional[Any] = None,
+    outer_hspace_mm: int = 9,
     tmp_dir: Optional[str] = None,
     keep_file: Optional[str] = None,
+    output_dir: Optional[Any] = None,
     **render_opts: Any,
 ) -> str:
-    """Compatibility wrapper for legacy ``itikz.nicematrix.ge``."""
+    """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
 
     unsupported = {
         "func": func,
@@ -574,7 +582,7 @@ def ge(
     }
     missing = [k for k, v in unsupported.items() if v not in (None, [], {}, ())]
     if missing:
-        raise NotImplementedError(f"Legacy options not yet supported in new GE: {', '.join(missing)}")
+        raise NotImplementedError(f"Compatibility options not yet supported in new GE: {', '.join(missing)}")
 
     pivot_style = f"draw={pivot_text_color}, inner sep=2pt, outer sep=0pt" if pivot_text_color else ""
     pivot_locs = (
@@ -625,7 +633,10 @@ def ge(
                     break
                 row = row_starts[g]
                 coord = f"({row}-{comment_col}.east)"
-                txt_with_locs.append((coord, str(txt), "text=violet"))
+                style = f"text=violet, xshift={comment_shift_x_mm}mm"
+                if comment_shift_y_mm:
+                    style += f", yshift={comment_shift_y_mm}mm"
+                txt_with_locs.append((coord, str(txt), style))
 
     if variable_summary:
         _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
@@ -640,8 +651,8 @@ def ge(
                 col = last_col_start + j
                 arrow = r"\Uparrow" if basic is True else r"\uparrow"
                 color = variable_colors[0] if basic is True else variable_colors[1]
-                txt_with_locs.append((f"({last_row}-{col})", rf"\textcolor{{{color}}}{{{arrow}}}", f"yshift={base_yshift}em"))
-                txt_with_locs.append((f"({last_row}-{col})", rf"\textcolor{{{color}}}{{x_{j+1}}}", f"yshift={2*base_yshift}em"))
+                txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{{arrow}}}$", f"yshift={base_yshift}em"))
+                txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{x_{{{j+1}}}}}$", f"yshift={2*base_yshift}em"))
 
     rowechelon_paths: List[str] = []
     if ref_path_list:
@@ -665,6 +676,9 @@ def ge(
         matrices=matrices,
         Nrhs=Nrhs,
         formater=formater,
+        outer_hspace_mm=outer_hspace_mm,
+        legacy_submatrix_names=True,
+        legacy_format=True,
         pivot_locs=pivot_locs,
         codebefore=codebefore,
         txt_with_locs=txt_with_locs,
@@ -673,6 +687,7 @@ def ge(
         create_extra_nodes=True if ref_path_list else None,
         create_medium_nodes=True if ref_path_list else None,
         fig_scale=fig_scale,
+        output_dir=output_dir,
         **render_opts,
     )
 

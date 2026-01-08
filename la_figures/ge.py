@@ -451,6 +451,8 @@ def decorate_ge(
     *,
     index_base: int = 1,
     pivot_style: str = "",
+    ref_path_case: str = "vh",
+    ref_path_block_col: int = 1,
 ) -> Dict[str, Any]:
     """Compute presentation decorations from a :class:`GETrace`.
 
@@ -483,6 +485,7 @@ def decorate_ge(
 
         Additional keys are returned as empty lists for future increments:
         ``bg_list``, ``path_list``, ``txt_with_locs``, ``rowechelon_paths``.
+        ``ref_path_list`` is included when pivots exist.
     """
 
     # Number of coefficient columns. Prefer the recorded shape metadata.
@@ -508,9 +511,21 @@ def decorate_ge(
         for (r, c) in trace.pivot_positions
     ]
 
+    ref_path_list: List[Tuple[int, int, List[Tuple[int, int]], str]] = []
+    if trace.pivot_positions:
+        ref_path_list.append(
+            (
+                len(trace.steps),
+                int(ref_path_block_col),
+                list(trace.pivot_positions),
+                str(ref_path_case),
+            )
+        )
+
     return {
         "pivot_locs": pivot_locs,
         "variable_types": variable_types,
+        "ref_path_list": ref_path_list,
         # Retain trace metadata for downstream consumers.
         "pivot_positions": list(trace.pivot_positions),
         "pivot_cols": list(trace.pivot_cols),
