@@ -147,47 +147,49 @@ def _legacy_array_name_specs(
     return terms
 
 
-def _legacy_name_specs_to_paths(
+def _legacy_name_specs_to_callouts(
     matrices: Sequence[Sequence[Any]],
     name_specs: Sequence[Tuple[Tuple[int, int], str, str]],
     *,
     color: str = "blue",
-) -> List[str]:
+) -> List[Dict[str, Any]]:
     from matrixlayout.ge import ge_grid_submatrix_spans
 
     spans = ge_grid_submatrix_spans(matrices)
     name_map = {(s.block_row, s.block_col): s.name for s in spans}
 
-    ar = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north east) + (0.02,0.02) $) -- +(0.6cm,0.3cm)    node[COLOR, above right=-3pt]{TXT};"
-    al = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north west) + (-0.02,0.02) $) -- +(-0.6cm,0.3cm) node[COLOR, above left=-3pt] {TXT};"
-    a = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.north) + (0,0) $) -- +(0cm,0.6cm) node[COLOR, above=1pt] {TXT};"
+    def _strip_math(s: str) -> Tuple[str, bool]:
+        s = str(s).strip()
+        if len(s) >= 2 and s[0] == "$" and s[-1] == "$":
+            return s[1:-1].strip(), True
+        return s, False
 
-    bl = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south west) + (-0.02,-0.02) $) -- +(-0.6cm,-0.3cm)  node[COLOR, below left=-3pt]{TXT};"
-    br = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south east) + (0.02,-0.02) $) -- +(0.6cm,-0.3cm)   node[COLOR, below right=-3pt]{TXT};"
-    b = r"\tikz \draw[<-,>=stealth,COLOR,thick] ($ (NAME.south) + (0,0) $) -- +(0cm,-0.6cm) node[COLOR, below=1pt] {TXT};"
+    anchor_map = {
+        "a": ("auto", "north"),
+        "al": ("left", "north"),
+        "ar": ("right", "north"),
+        "b": ("auto", "south"),
+        "bl": ("left", "south"),
+        "br": ("right", "south"),
+    }
 
-    out: List[str] = []
+    out: List[Dict[str, Any]] = []
     for (gM, gN), pos, txt in name_specs:
         name = name_map.get((gM, gN))
         if not name:
             continue
-        t = None
-        if pos == "a":
-            t = a
-        elif pos == "al":
-            t = al
-        elif pos == "ar":
-            t = ar
-        elif pos == "b":
-            t = b
-        elif pos == "bl":
-            t = bl
-        elif pos == "br":
-            t = br
-        if t is None:
-            continue
-        t = t.replace("COLOR", color).replace("NAME", name).replace("TXT", txt)
-        out.append(t)
+        side, anchor = anchor_map.get(pos, ("auto", "north"))
+        label, had_math = _strip_math(txt)
+        out.append(
+            {
+                "name": name,
+                "label": label,
+                "side": side,
+                "anchor": anchor,
+                "color": color,
+                "math_mode": had_math,
+            }
+        )
     return out
 
 
@@ -196,6 +198,10 @@ def _legacy_ref_path_list_to_rowechelon_paths(
     ref_path_list: Sequence[Any],
 ) -> List[str]:
     out: List[str] = []
+    from matrixlayout.ge import ge_grid_submatrix_spans
+
+    spans = ge_grid_submatrix_spans(matrices)
+    span_map = {(s.block_row, s.block_col): s for s in spans}
     for spec in ref_path_list:
         if not isinstance(spec, (list, tuple)) or len(spec) < 3:
             continue
@@ -203,13 +209,41 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         pivots = spec[2]
         case = spec[3] if len(spec) > 3 else "hh"
         color = spec[4] if len(spec) > 4 else "violet,line width=0.4mm"
-        _, _, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
-        block_heights, block_widths, _, _ = _grid_offsets(matrices, index_base=1)
-        if gM >= len(block_heights) or gN >= len(block_widths):
+        adj = spec[5] if len(spec) > 5 else 0.1
+        span = span_map.get((gM, gN))
+        if span is None:
             continue
-        shape = (block_heights[gM], block_widths[gN])
+        shape = (span.row_end - span.row_start + 1, span.col_end - span.col_start + 1)
         if not pivots:
             continue
+
+        tlr = span.row_start - 1
+        tlc = span.col_start - 1
+        name = span.name
+
+        def coords(i: int, j: int) -> str:
+            if i >= shape[0]:
+                if gN == 0 and j == 0:
+                    x = r"\x1"
+                else:
+                    x = r"\x2" if j >= shape[1] else r"\x4"
+                y = r"\y2"
+                p = f"({x},{y})"
+            elif j >= shape[1]:
+                x = r"\x2"
+                y = r"\y4"
+                p = f"({x},{y})"
+            elif j == 0:
+                x = r"\x1"
+                y = r"\y1" if i == 0 else r"\y3"
+                p = f"({x},{y})"
+            else:
+                p = f"({i + 1 + tlr}-|{j + 1 + tlc})"
+
+            if j != 0 and j < shape[1] and adj != 0:
+                p = f"($ {p} + ({adj:2},0) $)"
+
+            return p
 
         cur = pivots[0]
         ll = [cur] if (case in ("vv", "vh")) else []
@@ -235,11 +269,22 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         else:
             ll.append((shape[0], cur[1]))
 
-        coords = [
-            _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i), j=int(j), index_base=1)
-            for (i, j) in ll
-        ]
-        out.append(rf"\draw[{color}] " + " -- ".join(coords) + ";")
+        corners = rf"let \p1 = ({name}.north west), \p2 = ({name}.south east), "
+
+        if (case == "vv") or (case == "vh"):
+            p3 = rf"\p3 = ({ll[1][0] + tlr + 1}-|{ll[1][1] + tlc + 1}), "
+        else:
+            p3 = rf"\p3 = ({ll[0][0] + tlr + 1}-|{ll[0][1] + tlc + 1}), "
+
+        if (case == "vh") or (case == "hh"):
+            i, j = ll[-2]
+            p4 = rf"\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
+        else:
+            i, j = ll[-1]
+            p4 = rf"\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
+
+        cmd = rf"\tikz \draw[{color}] " + corners + p3 + p4 + " -- ".join([coords(*p) for p in ll]) + ";"
+        out.append(cmd)
     return out
 
 
@@ -531,7 +576,7 @@ def ge(
     if missing:
         raise NotImplementedError(f"Legacy options not yet supported in new GE: {', '.join(missing)}")
 
-    pivot_style = f"draw={pivot_text_color}" if pivot_text_color else ""
+    pivot_style = f"draw={pivot_text_color}, inner sep=2pt, outer sep=0pt" if pivot_text_color else ""
     pivot_locs = (
         _legacy_pivot_list_to_pivot_locs(matrices, pivot_list, index_base=1, pivot_style=pivot_style)
         if pivot_list
@@ -603,6 +648,7 @@ def ge(
         specs = ref_path_list if isinstance(ref_path_list, list) else [ref_path_list]
         rowechelon_paths.extend(_legacy_ref_path_list_to_rowechelon_paths(matrices, specs))
 
+    callouts: List[Dict[str, Any]] = []
     if array_names is not None:
         try:
             lhs, rhs = array_names
@@ -611,7 +657,7 @@ def ge(
             lhs, rhs_list = "E", ["A"]
         n_rows = len(matrices or [])
         name_specs = _legacy_array_name_specs(n_rows, str(lhs), [str(x) for x in rhs_list], start_index=start_index)
-        rowechelon_paths.extend(_legacy_name_specs_to_paths(matrices, name_specs, color="blue"))
+        callouts.extend(_legacy_name_specs_to_callouts(matrices, name_specs, color="blue"))
 
     from matrixlayout.ge import ge_grid_svg
 
@@ -623,6 +669,9 @@ def ge(
         codebefore=codebefore,
         txt_with_locs=txt_with_locs,
         rowechelon_paths=rowechelon_paths,
+        callouts=callouts or None,
+        create_extra_nodes=True if ref_path_list else None,
+        create_medium_nodes=True if ref_path_list else None,
         fig_scale=fig_scale,
         **render_opts,
     )

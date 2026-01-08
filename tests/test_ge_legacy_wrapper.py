@@ -140,4 +140,4 @@ def test_ge_legacy_wrapper_supports_array_names():
         ml_ge.ge_grid_svg = ge_svg_orig
 
     assert out == "<svg/>"
-    assert captured["rowechelon_paths"]
+    assert captured["callouts"]
