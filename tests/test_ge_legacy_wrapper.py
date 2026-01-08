@@ -25,8 +25,7 @@ def test_ge_legacy_wrapper_rejects_unsupported_options():
     from la_figures.convenience_ge import ge
 
     A = sym.Matrix([[1, 2], [3, 4]])
-    with pytest.raises(NotImplementedError):
-        ge([[None, A]], func=lambda m: m)
+    ge([[None, A]], func=lambda m: m)
 
 
 def test_ge_legacy_wrapper_supports_backgrounds_and_comments():

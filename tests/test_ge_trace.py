@@ -63,3 +63,14 @@ def test_ge_trace_separates_row_swap_and_elimination_steps():
 
     assert ops.index("RequireRowExchange") < ops.index("DoRowExchange")
     assert ops.index("DoRowExchange") < ops.index("RequireElimination")
+
+
+def test_ge_trace_emits_scaling_events_for_gj():
+    import la_figures
+
+    A = sym.Matrix([[2, 0], [0, 1]])
+    trace = la_figures.ge_trace(A, pivoting="none", gj=True)
+
+    ops = [ev.op for ev in trace.events]
+    assert "RequireScaling" in ops
+    assert "DoScaling" in ops

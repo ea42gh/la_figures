@@ -192,6 +192,8 @@ def _elimination_matrices(
     Ab: sym.Matrix,
     pivot_row: int,
     pivot_col: int,
+    *,
+    gj: bool = False,
 ) -> List[Tuple[sym.Matrix, int, sym.Expr]]:
     """Return elementary matrices to eliminate entries below a pivot.
 
@@ -207,6 +209,18 @@ def _elimination_matrices(
     if not _is_nonzero(piv):
         return []
 
+    if gj:
+        E = sym.eye(m)
+        for r in range(m):
+            if r == pivot_row:
+                continue
+            a = Ab[r, pivot_col]
+            if not _is_nonzero(a):
+                continue
+            factor = a / piv
+            E[r, pivot_row] = -factor
+        return [(E, pivot_row, sym.Integer(0))]
+
     out: List[Tuple[sym.Matrix, int, sym.Expr]] = []
     for r in range(pivot_row + 1, m):
         a = Ab[r, pivot_col]
@@ -219,11 +233,24 @@ def _elimination_matrices(
     return out
 
 
+def _has_nonzero_entry(Ab: sym.Matrix, pivot_row: int, pivot_col: int, *, gj: bool = False) -> bool:
+    m = Ab.rows
+    for r in range(pivot_row + 1, m):
+        if _is_nonzero(Ab[r, pivot_col]):
+            return True
+    if gj:
+        for r in range(0, pivot_row):
+            if _is_nonzero(Ab[r, pivot_col]):
+                return True
+    return False
+
+
 def ge_trace(
     ref_A: Any,
     ref_rhs: Any = None,
     *,
     pivoting: Pivoting = "none",
+    gj: bool = False,
 ) -> GETrace:
     """Compute a Gaussian elimination trace for ``A`` (optionally augmented).
 
@@ -236,6 +263,9 @@ def ge_trace(
     pivoting:
         Pivot selection strategy. ``"partial"`` uses max-abs pivoting for numeric
         matrices; otherwise it behaves like ``"none"``.
+    gj:
+        If True, perform Gauss-Jordan elimination (eliminate above the pivot and
+        emit a scaling step when needed).
 
     Returns
     -------
@@ -326,7 +356,8 @@ def ge_trace(
         # Elimination step (if needed): emitted as its own layer.
         # Skip the step entirely when the elimination matrix would be identity.
         # ------------------------------------------------------------------
-        elim_ops = _elimination_matrices(cur, row, col)
+        needs_elim = _has_nonzero_entry(cur, row, col, gj=gj)
+        elim_ops = _elimination_matrices(cur, row, col, gj=gj) if needs_elim else []
         if elim_ops:
             events.append(
                 GEEvent(
@@ -336,6 +367,8 @@ def ge_trace(
                         "pivot_row": int(row),
                         "pivot_col": int(col),
                         "count": int(len(elim_ops)),
+                        "gj": bool(gj),
+                        "yes": True,
                     },
                 )
             )
@@ -351,6 +384,7 @@ def ge_trace(
                             "pivot_col": int(col),
                             "target_row": int(target_row),
                             "factor": factor,
+                            "gj": bool(gj),
                         },
                     )
                 )
@@ -360,13 +394,40 @@ def ge_trace(
                 GEEvent(
                     op="RequireElimination",
                     level=len(steps),
-                    data={"pivot_row": int(row), "pivot_col": int(col), "yes": False},
+                    data={"pivot_row": int(row), "pivot_col": int(col), "yes": False, "gj": bool(gj)},
                 )
             )
 
         row += 1
 
     free_cols = [j for j in range(n_coef) if j not in pivot_cols]
+
+    if gj and m > 0:
+        require_scaling = False
+        scale_factors: List[sym.Expr] = []
+        for i, col_idx in enumerate(pivot_cols):
+            if i >= m:
+                break
+            piv = cur[i, col_idx]
+            if not _is_nonzero(piv) or not sym.simplify(piv - 1).is_zero:
+                require_scaling = True
+            scale_factors.append(piv)
+        if require_scaling and scale_factors:
+            E = sym.eye(m)
+            for i, piv in enumerate(scale_factors):
+                if not _is_nonzero(piv):
+                    continue
+                E[i, i] = sym.Integer(1) / piv
+            events.append(
+                GEEvent(
+                    op="RequireScaling",
+                    level=len(steps),
+                    data={"pivot_cols": list(pivot_cols)},
+                )
+            )
+            cur = E * cur
+            steps.append(GEStep(E=E, Ab=cur, pivot=(pivot_positions[-1] if pivot_positions else (0, 0))))
+            events.append(GEEvent(op="DoScaling", level=len(steps), data={}))
 
     events.append(GEEvent(op="Finished", level=len(steps), data={"rank": int(len(pivot_cols))}))
 
@@ -383,6 +444,7 @@ def ge_trace(
             "aug_shape": tuple(Ab.shape),
             "rank": len(pivot_cols),
             "pivoting": pivoting,
+            "gj": bool(gj),
         },
     )
 
@@ -453,6 +515,10 @@ def decorate_ge(
     pivot_style: str = "",
     ref_path_case: str = "vh",
     ref_path_block_col: int = 1,
+    pivot_block_col: int = 1,
+    pivot_color: str = "yellow!15",
+    missing_pivot_color: str = "gray!20",
+    path_color: str = "blue,line width=0.5mm",
 ) -> Dict[str, Any]:
     """Compute presentation decorations from a :class:`GETrace`.
 
@@ -480,12 +546,13 @@ def decorate_ge(
 
         - ``pivot_locs``: list of ``(fit_target, extra_style)`` where
           ``fit_target`` is a string like ``"(2-3)(2-3)"``.
-        - ``variable_types``: list of ``"pivot"`` / ``"free"`` for each
+        - ``variable_types``: list of booleans indicating pivot columns for each
           coefficient column (RHS columns excluded).
 
-        Additional keys are returned as empty lists for future increments:
-        ``bg_list``, ``path_list``, ``txt_with_locs``, ``rowechelon_paths``.
-        ``ref_path_list`` is included when pivots exist.
+        Additional keys mirror the Julia ``decorate_ge`` helper:
+        ``pivot_list``, ``bg_list``, ``path_list`` (aka ``ref_path_list``),
+        ``variable_summary``. Placeholder keys ``txt_with_locs`` and
+        ``rowechelon_paths`` are included for future increments.
     """
 
     # Number of coefficient columns. Prefer the recorded shape metadata.
@@ -497,9 +564,7 @@ def decorate_ge(
         n_coef = int(trace.initial.cols - int(trace.Nrhs or 0))
 
     pivot_set = set(int(c) for c in trace.pivot_cols)
-    variable_types: List[str] = [
-        ("pivot" if j in pivot_set else "free") for j in range(n_coef)
-    ]
+    variable_types: List[bool] = [(j in pivot_set) for j in range(n_coef)]
 
     def _cell(r: int, c: int) -> str:
         rr = int(r) + int(index_base)
@@ -522,17 +587,133 @@ def decorate_ge(
             )
         )
 
+    # Julia-style decorations for legacy compatibility.
+    M = int(shp[0]) if shp and len(shp) == 2 else int(trace.initial.rows)
+    N = int(n_coef)
+    pivot_cols_1b: List[int] = [int(c) + 1 for c in trace.pivot_cols]
+
+    def _plist(cols_1b: List[int]) -> List[Tuple[int, int]]:
+        return [(row, cols_1b[row] - 1) for row in range(len(cols_1b))]
+
+    pivot_dict: Dict[Tuple[int, int], Any] = {}
+    bg_dict: Dict[Tuple[int, int], Any] = {}
+    path_dict: Dict[Tuple[int, int], Any] = {}
+
+    current_cols: List[int] = []
+    update = True
+
+    def _ensure_col(col_0b: int) -> None:
+        col_1b = int(col_0b) + 1
+        if col_1b not in current_cols:
+            current_cols.append(col_1b)
+
+    for ev in trace.events:
+        level = int(ev.level)
+        if ev.op == "RequireRowExchange":
+            try:
+                _ensure_col(ev.data["col"])
+                row_1 = int(ev.data["row_1"])
+                row_2 = int(ev.data["row_2"])
+                col = int(ev.data["col"])
+            except Exception:
+                continue
+            length = len(current_cols)
+            if length >= 2:
+                bg_dict[(level, 1)] = [
+                    [level, 1, [(row_1, col), (row_2, col)], missing_pivot_color],
+                    [level, 1, _plist(current_cols[:-1]), pivot_color],
+                ]
+            elif length == 1:
+                bg_dict[(level, 1)] = [level, 1, [(row_1, col), (row_2, col)], missing_pivot_color]
+            if length != 0:
+                pl = _plist(current_cols)
+                pivot_dict[(level, 1)] = [(level, 1), pl]
+                bg_dict[(level, 1)] = [level, 1, pl, pivot_color]
+                path_dict[(level, 1)] = [level, 1, pl, "vv", path_color]
+            update = True
+        elif ev.op == "FoundPivot":
+            try:
+                _ensure_col(ev.data["pivot_col"])
+            except Exception:
+                pass
+            pl = _plist(current_cols)
+            pivot_dict[(level, 1)] = [(level, 1), pl]
+            bg_dict[(level, 1)] = [level, 1, pl, pivot_color]
+            update = True
+        elif ev.op == "RequireElimination":
+            try:
+                row = int(ev.data["pivot_row"])
+                col = int(ev.data["pivot_col"])
+            except Exception:
+                continue
+            first = 0 if ev.data.get("gj") else row
+            new_bg = [level, 1, [(row, col), [(first, col), (M - 1, col)]], pivot_color, 1]
+            if (level, 1) in bg_dict:
+                bg_dict[(level, 1)] = [bg_dict[(level, 1)], new_bg]
+            else:
+                bg_dict[(level, 1)] = new_bg
+            yes = ev.data.get("yes", True)
+            pl = _plist(current_cols)
+            path_dict[(level, 1)] = [level, 1, pl, "vh" if yes is False else "vv", path_color]
+        elif ev.op == "DoElimination":
+            try:
+                c = int(ev.data["pivot_row"])
+            except Exception:
+                continue
+            pivot_dict[(level, 0)] = [(level, 0), [(c, c)]]
+            path_dict[(level, 0)] = [level, 0, [(c, c)], "vv", path_color]
+            if ev.data.get("gj"):
+                bg_dict[(level, 0)] = [level, 0, [(c, c), [(0, c), (M - 1, c)]], pivot_color, 1]
+            else:
+                bg_dict[(level, 0)] = [level, 0, [(c, c), [(c, c), (M - 1, c)]], pivot_color, 1]
+        elif ev.op == "DoRowExchange":
+            try:
+                row_1 = int(ev.data["row_1"])
+                row_2 = int(ev.data["row_2"])
+            except Exception:
+                continue
+            pl = [(row_1, row_2), (row_2, row_1)]
+            pivot_dict[(level, 0)] = [(level, 0), pl]
+            bg_dict[(level, 0)] = [level, 0, pl, missing_pivot_color]
+        elif ev.op == "RequireScaling":
+            if current_cols:
+                pl = _plist(current_cols)
+                if update:
+                    pivot_dict[(level, 1)] = [(level, 1), pl]
+                    bg_dict[(level, 1)] = [level, 1, pl, pivot_color]
+                path_dict[(level, 1)] = [level, 1, pl, "vh", path_color]
+            update = True
+        elif ev.op == "DoScaling":
+            pl = [(c, c) for c in range(M)]
+            pivot_dict[(level, 0)] = [(level, 0), pl]
+            bg_dict[(level, 0)] = [level, 0, pl, pivot_color]
+        elif ev.op == "Finished":
+            if current_cols:
+                pl = _plist(current_cols)
+                pivot_dict[(level, 1)] = [(level, 1), pl]
+                bg_dict[(level, 1)] = [level, 1, pl, pivot_color]
+                path_dict[(level, 1)] = [level, 1, pl, "vh", path_color]
+            update = True
+
+    pivot_list = [pivot_dict[k] for k in sorted(pivot_dict.keys())]
+    bg_list = [bg_dict[k] for k in sorted(bg_dict.keys())]
+    path_list = [path_dict[k] for k in sorted(path_dict.keys())]
+
+    variable_summary: List[bool] = list(variable_types)
+
     return {
         "pivot_locs": pivot_locs,
         "variable_types": variable_types,
-        "ref_path_list": ref_path_list,
+        "pivot_list": pivot_list,
+        "bg_list": bg_list,
+        "path_list": path_list,
+        "ref_path_list": path_list or ref_path_list,
+        "variable_summary": variable_summary,
         # Retain trace metadata for downstream consumers.
         "pivot_positions": list(trace.pivot_positions),
         "pivot_cols": list(trace.pivot_cols),
         "free_cols": list(trace.free_cols),
         # Placeholders for later GE decoration increments.
-        "bg_list": [],
-        "path_list": [],
         "txt_with_locs": [],
         "rowechelon_paths": [],
         "callouts": [],

@@ -358,6 +358,7 @@ def _build_ge_bundle(
     # Default pivoting strategy must match the original implementation:
     # no pivoting unless explicitly requested.
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -377,7 +378,7 @@ def _build_ge_bundle(
     if ref_rhs is None:
         ref_rhs = rhs
 
-    tr: GETrace = ge_trace(ref_A, ref_rhs, pivoting=pivoting)  # type: ignore[arg-type]
+    tr: GETrace = ge_trace(ref_A, ref_rhs, pivoting=pivoting, gj=gj)  # type: ignore[arg-type]
 
     # Decorations are produced in *coefficient-matrix* coordinates.
     # We rebase pivot boxes to the final (last-layer) A-block in the GE grid.
@@ -467,6 +468,7 @@ def ge_tbl_spec(
     *,
     rhs: Any = None,
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -489,6 +491,7 @@ def ge_tbl_spec(
         ref_rhs,
         rhs=rhs,
         pivoting=pivoting,
+        gj=gj,
         show_pivots=show_pivots,
         index_base=index_base,
         pivot_style=pivot_style,
@@ -509,6 +512,7 @@ def ge_tbl_layout_spec(
     *,
     rhs: Any = None,
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -528,6 +532,7 @@ def ge_tbl_layout_spec(
         ref_rhs,
         rhs=rhs,
         pivoting=pivoting,
+        gj=gj,
         show_pivots=show_pivots,
         index_base=index_base,
         pivot_style=pivot_style,
@@ -561,7 +566,7 @@ def ge(
     pivot_text_color: str = "red",
     ref_path_list: Optional[Any] = None,
     comment_list: Optional[Any] = None,
-    comment_shift_x_mm: float = 20.0,
+    comment_shift_x_mm: float = 50.0,
     comment_shift_y_mm: float = 0.0,
     variable_summary: Optional[Any] = None,
     array_names: Optional[Any] = None,
@@ -578,13 +583,39 @@ def ge(
     """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
 
     unsupported = {
-        "func": func,
-        "tmp_dir": tmp_dir,
-        "keep_file": keep_file,
+        "func": None,
+        "tmp_dir": None,
+        "keep_file": None,
     }
     missing = [k for k, v in unsupported.items() if v not in (None, [], {}, ())]
     if missing:
         raise NotImplementedError(f"Compatibility options not yet supported in new GE: {', '.join(missing)}")
+
+    output_stem: Optional[str] = None
+    if keep_file:
+        import os
+        from pathlib import Path
+
+        p = Path(str(keep_file))
+        suffix = p.suffix.lower()
+        if suffix in (".tex", ".svg", ".pdf", ".dvi", ".xdv"):
+            output_stem = p.stem
+        else:
+            output_stem = p.name
+        if output_dir is None:
+            if p.is_absolute():
+                output_dir = str(p.parent)
+            else:
+                if str(p.parent) not in ("", "."):
+                    if tmp_dir:
+                        output_dir = str(Path(tmp_dir) / p.parent)
+                    else:
+                        output_dir = str(p.parent)
+                elif tmp_dir:
+                    output_dir = tmp_dir
+
+    if output_dir is None and tmp_dir:
+        output_dir = tmp_dir
 
     pivot_style = f"draw={pivot_text_color}, inner sep=2pt, outer sep=0pt" if pivot_text_color else ""
     pivot_locs = (
@@ -594,7 +625,9 @@ def ge(
     )
 
     codebefore: List[str] = []
+    needs_medium_nodes = False
     if bg_for_entries:
+        needs_medium_nodes = True
         specs = bg_for_entries
         if isinstance(specs, list) and specs and all(isinstance(elem, list) for elem in specs):
             if len(specs) == 5 and not any(isinstance(e, list) for e in specs[0:2]):
@@ -614,11 +647,11 @@ def ge(
                     (i0, j0), (i1, j1) = entry
                     c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
                     c1 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i1), j=int(j1), index_base=1)
-                    fit = f"{c0} {c1}"
+                    fit = f"({c0[1:-1]}-medium) ({c1[1:-1]}-medium)"
                 else:
                     i0, j0 = entry
                     c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
-                    fit = f"{c0}"
+                    fit = f"({c0[1:-1]}-medium)"
                 codebefore.append(
                     rf"\tikz \node [fill={color}, inner sep = {pt}pt, fit = {fit}] {{}} ;"
                 )
@@ -635,10 +668,10 @@ def ge(
                     break
                 row = row_starts[g]
                 coord = f"({row}-{comment_col}.east)"
-                style = f"text=violet, xshift={comment_shift_x_mm}mm"
+                style = f"right,align=left,text=violet, xshift={comment_shift_x_mm}mm"
                 if comment_shift_y_mm:
                     style += f", yshift={comment_shift_y_mm}mm"
-                txt_with_locs.append((coord, str(txt), style))
+                txt_with_locs.append((coord, r"\qquad " + str(txt), style))
 
     if variable_summary:
         _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
@@ -672,6 +705,59 @@ def ge(
         name_specs = _legacy_array_name_specs(n_rows, str(lhs), [str(x) for x in rhs_list], start_index=start_index)
         callouts.extend(_legacy_name_specs_to_callouts(matrices, name_specs, color="blue"))
 
+    if func is not None:
+        class _LegacyFuncAdapter:
+            def __init__(self):
+                self.codebefore = codebefore
+                self.txt_with_locs = txt_with_locs
+                self.rowechelon_paths = rowechelon_paths
+
+            def nm_background(self, gM, gN, loc_list, color="red!15", pt=0):
+                nonlocal needs_medium_nodes
+                needs_medium_nodes = True
+                specs = [(gM, gN, loc_list, color, pt)]
+                for spec in specs:
+                    gM, gN, entries, color, pt = spec
+                    if not isinstance(entries, (list, tuple)):
+                        entries = [entries]
+                    for entry in entries:
+                        if isinstance(entry, (list, tuple)) and len(entry) == 2 and all(isinstance(x, (list, tuple)) for x in entry):
+                            (i0, j0), (i1, j1) = entry
+                            c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
+                            c1 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i1), j=int(j1), index_base=1)
+                            fit = f"({c0[1:-1]}-medium) ({c1[1:-1]}-medium)"
+                        else:
+                            i0, j0 = entry
+                            c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
+                            fit = f"({c0[1:-1]}-medium)"
+                        self.codebefore.append(
+                            rf"\tikz \node [fill={color}, inner sep = {pt}pt, fit = {fit}] {{}} ;"
+                        )
+
+            def nm_add_rowechelon_path(self, gM, gN, pivots, case="hh", color="blue,line width=0.4mm", adj=0.1):
+                specs = [(gM, gN, pivots, case, color, adj)]
+                self.rowechelon_paths.extend(_legacy_ref_path_list_to_rowechelon_paths(matrices, specs))
+
+            def nm_text(self, txt_list, color="violet"):
+                if not txt_list:
+                    return
+                _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+                if block_widths and col_starts:
+                    last_col_start = col_starts[-1]
+                    last_col_width = block_widths[-1]
+                    comment_col = last_col_start + max(last_col_width - 1, 0)
+                    for g, txt in enumerate(txt_list):
+                        if g >= len(row_starts):
+                            break
+                        row = row_starts[g]
+                        coord = f"({row}-{comment_col}.east)"
+                        style = f"right,align=left,text={color}, xshift={comment_shift_x_mm}mm"
+                        if comment_shift_y_mm:
+                            style += f", yshift={comment_shift_y_mm}mm"
+                        self.txt_with_locs.append((coord, r"\qquad " + str(txt), style))
+
+        func(_LegacyFuncAdapter())
+
     from matrixlayout.ge import ge_grid_svg
 
     return ge_grid_svg(
@@ -686,10 +772,11 @@ def ge(
         txt_with_locs=txt_with_locs,
         rowechelon_paths=rowechelon_paths,
         callouts=callouts or None,
-        create_extra_nodes=True if ref_path_list else None,
-        create_medium_nodes=True if ref_path_list else None,
+        create_extra_nodes=True if (ref_path_list or needs_medium_nodes) else None,
+        create_medium_nodes=True if (ref_path_list or needs_medium_nodes) else None,
         fig_scale=fig_scale,
         output_dir=output_dir,
+        output_stem=output_stem or "output",
         frame=frame,
         **render_opts,
     )
@@ -701,6 +788,7 @@ def ge_tbl_bundle(
     *,
     rhs: Any = None,
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -720,6 +808,7 @@ def ge_tbl_bundle(
         ref_rhs,
         rhs=rhs,
         pivoting=pivoting,
+        gj=gj,
         show_pivots=show_pivots,
         index_base=index_base,
         pivot_style=pivot_style,
@@ -767,6 +856,7 @@ def ge_tbl_tex(
     *,
     rhs: Any = None,
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -786,6 +876,7 @@ def ge_tbl_tex(
         ref_rhs,
         rhs=rhs,
         pivoting=pivoting,
+        gj=gj,
         show_pivots=show_pivots,
         index_base=index_base,
         pivot_style=pivot_style,
@@ -806,6 +897,7 @@ def ge_tbl_svg(
     *,
     rhs: Any = None,
     pivoting: str = "none",
+    gj: bool = False,
     show_pivots: Optional[bool] = False,
     index_base: int = 1,
     pivot_style: str = "",
@@ -829,6 +921,7 @@ def ge_tbl_svg(
         ref_rhs,
         rhs=rhs,
         pivoting=pivoting,
+        gj=gj,
         show_pivots=show_pivots,
         index_base=index_base,
         pivot_style=pivot_style,

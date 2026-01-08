@@ -1,14 +1,28 @@
-"""Shared TeX formatting helpers for la_figures."""
+"""Shared TeX formatting helpers for la_figures.
+
+This module defers to ``matrixlayout.formatting`` when available to keep the
+formatting policy consistent across packages.
+"""
 
 from __future__ import annotations
 
-from fractions import Fraction
-import numbers
 from typing import Any
 
 
 def latexify(x: Any) -> str:
     """Return a TeX-ready representation for a scalar-like value."""
+    try:
+        from matrixlayout.formatting import latexify as _latexify  # type: ignore
+    except Exception:
+        _latexify = None
+
+    if _latexify is not None:
+        return _latexify(x)
+
+    # Fallback to the local implementation (mirrors matrixlayout.formatting).
+    from fractions import Fraction
+    import numbers
+
     if isinstance(x, str):
         return x
 

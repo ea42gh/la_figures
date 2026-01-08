@@ -20,54 +20,96 @@ def _ensure_repo_on_path() -> None:
         sys.path.insert(0, str(p))
 
 
-def _normalize_block(s: str) -> str:
-    out = []
-    for line in s.splitlines():
-        stripped = line.strip()
-        if not stripped:
-            continue
-        if stripped.startswith("%"):
-            continue
-        if stripped.startswith(r"\begin{NiceArray"):
-            continue
-        if stripped.startswith(r"\end{NiceArray"):
-            continue
-        if stripped.startswith(r"\CodeBefore"):
-            continue
-        if stripped.startswith(r"\Body"):
-            continue
-        if stripped.startswith(r"\CodeAfter"):
-            continue
-        if stripped.startswith(r"\begin{tikzpicture}"):
-            continue
-        if stripped.startswith(r"\end{tikzpicture}"):
-            continue
-        if stripped.startswith(r"\begin{scope}"):
-            continue
-        if stripped.startswith(r"\end{scope}"):
-            continue
-        if stripped == "$":
-            continue
-        cleaned = stripped.replace("%", "").strip()
-        if cleaned:
-            out.append(cleaned)
-    return "\n".join(out)
-
-
-def _nicearray_block(tex: str) -> str:
+def _extract_mat_format(tex: str) -> str:
     start = tex.find(r"\begin{NiceArray")
     if start < 0:
         return ""
-    end = tex.find(r"\end{NiceArray}", start)
+    i = start + len(r"\begin{NiceArray")
+    if i < len(tex) and tex[i] == "}":
+        i += 1
+    if i < len(tex) and tex[i] == "[":
+        depth = 1
+        i += 1
+        while i < len(tex) and depth:
+            if tex[i] == "[":
+                depth += 1
+            elif tex[i] == "]":
+                depth -= 1
+            i += 1
+    while i < len(tex) and tex[i].isspace():
+        i += 1
+    if i >= len(tex) or tex[i] != "{":
+        return ""
+    i += 1
+    brace = 1
+    buf = []
+    while i < len(tex) and brace:
+        ch = tex[i]
+        if ch == "{":
+            brace += 1
+        elif ch == "}":
+            brace -= 1
+            if brace == 0:
+                i += 1
+                break
+        if brace:
+            buf.append(ch)
+        i += 1
+    return "".join(buf).strip()
+
+
+def _extract_mat_rep(tex: str) -> str:
+    start = tex.find(r"\Body%")
+    if start >= 0:
+        start = start + len(r"\Body%")
+    else:
+        start = tex.find(r"\begin{NiceArray")
+        if start < 0:
+            return ""
+        start = tex.find("\n", start)
+        if start < 0:
+            return ""
+        start += 1
+    end = tex.find(r"\CodeAfter", start)
     if end < 0:
-        return tex[start:]
-    return tex[start : end + len(r"\end{NiceArray}")]
+        body = tex[start:]
+    else:
+        body = tex[start:end]
+    body = body.replace("%", "").strip()
+    return body
+
+
+def _normalize_mat_rep(s: str) -> str:
+    return "\n".join(line.rstrip() for line in s.strip().splitlines())
+
+
+def _submatrix_spans(tex: str):
+    spans = []
+    for line in tex.splitlines():
+        if "\\SubMatrix" not in line:
+            continue
+        start = line.find("(")
+        end = line.find(")", start + 1)
+        if start < 0 or end < 0:
+            continue
+        inner = line[start + 1 : end]
+        import re
+
+        m = re.search(r"\{([^}]+)\}\{([^}]+)\}", inner)
+        if not m:
+            continue
+        spans.append(f"{{{m.group(1)}}}{{{m.group(2)}}}")
+    return spans
+
+
+def _submatrix_names(tex: str):
+    import re
+
+    return re.findall(r"name=([A-Za-z0-9_]+)", tex)
 
 
 def _legacy_qr_tex(matrices):
-    import itikz
-
-    nM = itikz.nicematrix
+    import itikz.nicematrix as nM
     m = nM.MatrixGridLayout(matrices, extra_rows=[1, 0, 0, 0])
     m.preamble = nM.preamble + "\n" + r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n"
 
@@ -108,7 +150,12 @@ def _legacy_qr_tex(matrices):
 
 
 def _compare_blocks(legacy: str, new: str) -> bool:
-    return _normalize_block(_nicearray_block(legacy)) == _normalize_block(_nicearray_block(new))
+    return (
+        _extract_mat_format(legacy) == _extract_mat_format(new)
+        and _normalize_mat_rep(_extract_mat_rep(legacy)) == _normalize_mat_rep(_extract_mat_rep(new))
+        and _submatrix_spans(legacy) == _submatrix_spans(new)
+        and _submatrix_names(legacy) == _submatrix_names(new)
+    )
 
 
 def test_qr_tex_matches_legacy_for_2x2():
