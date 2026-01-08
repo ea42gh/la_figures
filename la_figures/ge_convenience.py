@@ -41,16 +41,14 @@ def _matrix_shape(mat: Any) -> Tuple[int, int]:
     return (0, 0)
 
 
-def _legacy_pivot_list_to_pivot_locs(
+def _grid_offsets(
     matrices: Sequence[Sequence[Any]],
-    pivot_list: Sequence[Any],
     *,
     index_base: int = 1,
-    pivot_style: str = "",
-) -> List[Tuple[str, str]]:
+) -> Tuple[List[int], List[int], List[int], List[int]]:
     grid: List[List[Any]] = [list(r) for r in (matrices or [])]
     if not grid:
-        return []
+        return ([], [], [], [])
     n_block_rows = len(grid)
     n_block_cols = max((len(r) for r in grid), default=0)
     for r in range(n_block_rows):
@@ -81,6 +79,39 @@ def _legacy_pivot_list_to_pivot_locs(
         col_starts.append(acc)
         acc += w
 
+    return block_heights, block_widths, row_starts, col_starts
+
+
+def _grid_cell_coord(
+    matrices: Sequence[Sequence[Any]],
+    *,
+    gM: int,
+    gN: int,
+    i: int,
+    j: int,
+    index_base: int = 1,
+) -> str:
+    block_heights, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=index_base)
+    if gM >= len(row_starts) or gN >= len(col_starts):
+        raise ValueError("grid position out of range")
+    rr = row_starts[gM] + int(i)
+    cc = col_starts[gN] + int(j)
+    if block_heights and (int(i) >= block_heights[gM]):
+        rr = row_starts[gM] + block_heights[gM] - 1
+    if block_widths and (int(j) >= block_widths[gN]):
+        cc = col_starts[gN] + block_widths[gN] - 1
+    return f"({rr}-{cc})"
+
+
+def _legacy_pivot_list_to_pivot_locs(
+    matrices: Sequence[Sequence[Any]],
+    pivot_list: Sequence[Any],
+    *,
+    index_base: int = 1,
+    pivot_style: str = "",
+) -> List[Tuple[str, str]]:
+    _, _, row_starts, col_starts = _grid_offsets(matrices, index_base=index_base)
+
     out: List[Tuple[str, str]] = []
     for spec in pivot_list:
         if not spec or len(spec) < 2:
@@ -93,12 +124,9 @@ def _legacy_pivot_list_to_pivot_locs(
             continue
         if gM >= len(row_starts) or gN >= len(col_starts):
             continue
-        r0 = row_starts[gM]
-        c0 = col_starts[gN]
         for (i, j) in pivots:
-            rr = r0 + int(i)
-            cc = c0 + int(j)
-            out.append((f"({rr}-{cc})({rr}-{cc})", pivot_style))
+            coord = _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i), j=int(j), index_base=index_base)
+            out.append((f"{coord}{coord}", pivot_style))
     return out
 
 
@@ -352,17 +380,9 @@ def ge(
     keep_file: Optional[str] = None,
     **render_opts: Any,
 ) -> str:
-    """Compatibility wrapper for legacy ``itikz.nicematrix.ge``.
-
-    Supported: matrices, Nrhs, formater, pivot_list (as pivot boxes), fig_scale,
-    and render options (crop/padding/toolchain_name).
-    """
+    """Compatibility wrapper for legacy ``itikz.nicematrix.ge``."""
 
     unsupported = {
-        "bg_for_entries": bg_for_entries,
-        "ref_path_list": ref_path_list,
-        "comment_list": comment_list,
-        "variable_summary": variable_summary,
         "array_names": array_names,
         "func": func,
         "tmp_dir": tmp_dir,
@@ -372,13 +392,98 @@ def ge(
     if missing:
         raise NotImplementedError(f"Legacy options not yet supported in new GE: {', '.join(missing)}")
 
-    _ = (variable_colors, start_index)
     pivot_style = f"draw={pivot_text_color}" if pivot_text_color else ""
     pivot_locs = (
         _legacy_pivot_list_to_pivot_locs(matrices, pivot_list, index_base=1, pivot_style=pivot_style)
         if pivot_list
         else None
     )
+
+    codebefore: List[str] = []
+    if bg_for_entries:
+        specs = bg_for_entries
+        if isinstance(specs, list) and specs and all(isinstance(elem, list) for elem in specs):
+            if len(specs) == 5 and not any(isinstance(e, list) for e in specs[0:2]):
+                specs = [specs]
+        if not isinstance(specs, list):
+            specs = [specs]
+        for spec in specs:
+            if not isinstance(spec, (list, tuple)) or len(spec) < 3:
+                continue
+            gM, gN, entries = spec[0], spec[1], spec[2]
+            color = spec[3] if len(spec) > 3 else "red!15"
+            pt = spec[4] if len(spec) > 4 else 0
+            if not isinstance(entries, (list, tuple)):
+                entries = [entries]
+            for entry in entries:
+                if isinstance(entry, (list, tuple)) and len(entry) == 2 and all(isinstance(x, (list, tuple)) for x in entry):
+                    (i0, j0), (i1, j1) = entry
+                    c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
+                    c1 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i1), j=int(j1), index_base=1)
+                    fit = f"{c0} {c1}"
+                else:
+                    i0, j0 = entry
+                    c0 = _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i0), j=int(j0), index_base=1)
+                    fit = f"{c0}"
+                codebefore.append(
+                    rf"\tikz \node [fill={color}, inner sep = {pt}pt, fit = {fit}] {{}} ;"
+                )
+
+    txt_with_locs: List[Tuple[str, str, str]] = []
+    if comment_list:
+        _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+        if block_widths and col_starts:
+            last_col_start = col_starts[-1]
+            last_col_width = block_widths[-1]
+            comment_col = last_col_start + max(last_col_width - 1, 0)
+            for g, txt in enumerate(comment_list):
+                if g >= len(row_starts):
+                    break
+                row = row_starts[g]
+                coord = f"({row}-{comment_col}.east)"
+                txt_with_locs.append((coord, str(txt), "text=violet"))
+
+    if variable_summary:
+        _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+        if block_widths and col_starts and row_starts:
+            last_col_start = col_starts[-1]
+            last_col_width = block_widths[-1]
+            last_row = row_starts[-1] + max(_grid_offsets(matrices, index_base=1)[0][-1] - 1, 0)
+            base_yshift = -1.2
+            for j, basic in enumerate(variable_summary):
+                if j >= last_col_width:
+                    break
+                col = last_col_start + j
+                arrow = r"\Uparrow" if basic is True else r"\uparrow"
+                color = variable_colors[0] if basic is True else variable_colors[1]
+                txt_with_locs.append((f"({last_row}-{col})", rf"\textcolor{{{color}}}{{{arrow}}}", f"yshift={base_yshift}em"))
+                txt_with_locs.append((f"({last_row}-{col})", rf"\textcolor{{{color}}}{{x_{j+1}}}", f"yshift={2*base_yshift}em"))
+
+    rowechelon_paths: List[str] = []
+    if ref_path_list:
+        specs = ref_path_list if isinstance(ref_path_list, list) else [ref_path_list]
+        for spec in specs:
+            if not isinstance(spec, (list, tuple)) or len(spec) < 2:
+                continue
+            gM, gN = spec[0], spec[1]
+            pivots = spec[2] if len(spec) > 2 else []
+            case = spec[3] if len(spec) > 3 else "hh"
+            color = spec[4] if len(spec) > 4 else "violet,line width=0.4mm"
+            coords = [
+                _grid_cell_coord(matrices, gM=int(gM), gN=int(gN), i=int(i), j=int(j), index_base=1)
+                for (i, j) in pivots
+            ]
+            if not coords:
+                continue
+            block_heights, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+            last_row = row_starts[int(gM)] + block_heights[int(gM)] - 1
+            last_col = col_starts[int(gN)] + block_widths[int(gN)] - 1
+            last_pivot = pivots[-1]
+            if case in ("hh", "vh"):
+                coords.append(f"({row_starts[int(gM)] + int(last_pivot[0])}-{last_col})")
+            if case in ("vv", "hv"):
+                coords.append(f"({last_row}-{col_starts[int(gN)] + int(last_pivot[1])})")
+            rowechelon_paths.append(rf"\draw[{color}] " + " -- ".join(coords) + ";")
 
     from matrixlayout.ge import ge_grid_svg
 
@@ -387,6 +492,9 @@ def ge(
         Nrhs=Nrhs,
         formater=formater,
         pivot_locs=pivot_locs,
+        codebefore=codebefore,
+        txt_with_locs=txt_with_locs,
+        rowechelon_paths=rowechelon_paths,
         fig_scale=fig_scale,
         **render_opts,
     )

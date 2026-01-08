@@ -26,4 +26,89 @@ def test_ge_legacy_wrapper_rejects_unsupported_options():
 
     A = sym.Matrix([[1, 2], [3, 4]])
     with pytest.raises(NotImplementedError):
-        ge([[None, A]], bg_for_entries=[1])
+        ge([[None, A]], array_names=["E", ["A"]])
+
+
+def test_ge_legacy_wrapper_supports_backgrounds_and_comments():
+    from la_figures.convenience_ge import ge
+    from matrixlayout import ge as ml_ge
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    matrices = [[None, A]]
+
+    captured = {}
+
+    def fake_svg(**kwargs):
+        captured.update(kwargs)
+        return "<svg/>"
+
+    ge_svg_orig = ml_ge.ge_grid_svg
+    ml_ge.ge_grid_svg = fake_svg
+    try:
+        out = ge(
+            matrices,
+            bg_for_entries=[(0, 1, [(0, 0)], "red!15", 0)],
+            comment_list=["note"],
+        )
+    finally:
+        ml_ge.ge_grid_svg = ge_svg_orig
+
+    assert out == "<svg/>"
+    assert captured["codebefore"]
+    assert captured["txt_with_locs"]
+
+
+def test_ge_legacy_wrapper_supports_ref_path_list():
+    from la_figures.convenience_ge import ge
+    from matrixlayout import ge as ml_ge
+
+    A0 = sym.Matrix([[1, 2], [3, 4]])
+    E1 = sym.eye(2)
+    A1 = sym.Matrix([[1, 2], [0, 1]])
+    matrices = [[None, A0], [E1, A1]]
+
+    captured = {}
+
+    def fake_svg(**kwargs):
+        captured.update(kwargs)
+        return "<svg/>"
+
+    ge_svg_orig = ml_ge.ge_grid_svg
+    ml_ge.ge_grid_svg = fake_svg
+    try:
+        out = ge(
+            matrices,
+            ref_path_list=[(1, 1, [(0, 0), (1, 1)], "hh")],
+        )
+    finally:
+        ml_ge.ge_grid_svg = ge_svg_orig
+
+    assert out == "<svg/>"
+    assert captured["rowechelon_paths"]
+
+
+def test_ge_legacy_wrapper_supports_variable_summary():
+    from la_figures.convenience_ge import ge
+    from matrixlayout import ge as ml_ge
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    matrices = [[None, A]]
+
+    captured = {}
+
+    def fake_svg(**kwargs):
+        captured.update(kwargs)
+        return "<svg/>"
+
+    ge_svg_orig = ml_ge.ge_grid_svg
+    ml_ge.ge_grid_svg = fake_svg
+    try:
+        out = ge(
+            matrices,
+            variable_summary=[True, False],
+        )
+    finally:
+        ml_ge.ge_grid_svg = ge_svg_orig
+
+    assert out == "<svg/>"
+    assert captured["txt_with_locs"]
