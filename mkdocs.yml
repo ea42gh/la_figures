@@ -1,0 +1,24 @@
+site_name: la_figures
+docs_dir: docs
+site_dir: site
+theme:
+  name: readthedocs
+plugins:
+  - search
+  - mkdocs-jupyter
+nav:
+  - Home: index.md
+  - Overview: overview.md
+  - Getting Started: getting-started.md
+  - Specs: specs.md
+  - Recipes: recipes.md
+  - Interop: interop.md
+  - API: api.md
+  - Notebooks:
+      - Overview: notebooks/README.md
+      - Stack of matrices: notebooks/01_stack_of_matrices.ipynb
+      - Gaussian elimination: notebooks/02_gaussian_elimination.ipynb
+      - QR: notebooks/03_qr.ipynb
+      - Eigenproblems: notebooks/04_eigenproblems.ipynb
+      - Algorithms overview: notebooks/05_algorithms_overview.ipynb
+      - Julia interop: notebooks/06_julia_interop.ipynb

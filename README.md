@@ -16,3 +16,15 @@ selector helpers from `matrixlayout.formatting` (or re-exported via
 See `../JULIA_INTEROP.md` for PyCall/PythonCall usage patterns and a small
 Julia façade module that re-exports the Python convenience wrappers under the
 same top-level function names.
+
+## Documentation
+
+MkDocs configuration lives in `la_figures/mkdocs.yml` with content under
+`la_figures/docs/`.
+
+Build the docs:
+
+```bash
+cd la_figures
+mkdocs build
+```
