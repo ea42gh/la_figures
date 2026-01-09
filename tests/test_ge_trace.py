@@ -41,12 +41,24 @@ def test_ge_trace_emits_per_row_elimination_steps():
     import la_figures
 
     A = sym.Matrix([[1, 0, 0], [2, 1, 0], [3, 0, 1]])
-    trace = la_figures.ge_trace(A, pivoting="none")
+    trace = la_figures.ge_trace(A, pivoting="none", consolidate_elimination=False)
 
     elim_events = [ev for ev in trace.events if ev.op == "DoElimination"]
     # Eliminate rows 1 and 2 in the first pivot column.
     assert [ev.data["target_row"] for ev in elim_events] == [1, 2]
     assert len(trace.steps) == 2
+
+
+def test_ge_trace_consolidates_elimination_by_default():
+    import la_figures
+
+    A = sym.Matrix([[1, 0, 0], [2, 1, 0], [3, 0, 1]])
+    trace = la_figures.ge_trace(A, pivoting="none")
+
+    elim_events = [ev for ev in trace.events if ev.op == "DoElimination"]
+    assert len(elim_events) == 1
+    assert elim_events[0].data["targets"] == [1, 2]
+    assert len(trace.steps) == 1
 
 
 def test_ge_trace_separates_row_swap_and_elimination_steps():

@@ -194,6 +194,7 @@ def _elimination_matrices(
     pivot_col: int,
     *,
     gj: bool = False,
+    consolidate: bool = True,
 ) -> List[Tuple[sym.Matrix, int, sym.Expr]]:
     """Return elementary matrices to eliminate entries below a pivot.
 
@@ -219,6 +220,18 @@ def _elimination_matrices(
                 continue
             factor = a / piv
             E[r, pivot_row] = -factor
+        return [(E, pivot_row, sym.Integer(0))]
+
+    if consolidate:
+        E = sym.eye(m)
+        for r in range(pivot_row + 1, m):
+            a = Ab[r, pivot_col]
+            if not _is_nonzero(a):
+                continue
+            factor = a / piv
+            E[r, pivot_row] = -factor
+        if E == sym.eye(m):
+            return []
         return [(E, pivot_row, sym.Integer(0))]
 
     out: List[Tuple[sym.Matrix, int, sym.Expr]] = []
@@ -251,6 +264,7 @@ def ge_trace(
     *,
     pivoting: Pivoting = "none",
     gj: bool = False,
+    consolidate_elimination: bool = True,
 ) -> GETrace:
     """Compute a Gaussian elimination trace for ``A`` (optionally augmented).
 
@@ -357,7 +371,7 @@ def ge_trace(
         # Skip the step entirely when the elimination matrix would be identity.
         # ------------------------------------------------------------------
         needs_elim = _has_nonzero_entry(cur, row, col, gj=gj)
-        elim_ops = _elimination_matrices(cur, row, col, gj=gj) if needs_elim else []
+        elim_ops = _elimination_matrices(cur, row, col, gj=gj, consolidate=consolidate_elimination) if needs_elim else []
         if elim_ops:
             events.append(
                 GEEvent(
@@ -383,6 +397,7 @@ def ge_trace(
                             "pivot_row": int(row),
                             "pivot_col": int(col),
                             "target_row": int(target_row),
+                            "targets": list(range(int(row) + 1, m)) if consolidate_elimination else [int(target_row)],
                             "factor": factor,
                             "gj": bool(gj),
                         },
