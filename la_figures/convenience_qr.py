@@ -46,6 +46,7 @@ def qr_tbl_tex(
     label_text_color: str = "red",
     known_zero_color: str = "brown",
     decorators: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> str:
     """Compute a QR table TeX document."""
 
@@ -63,6 +64,7 @@ def qr_tbl_tex(
         label_text_color=label_text_color,
         known_zero_color=known_zero_color,
         decorators=decorators,
+        strict=strict,
     )
 
     return qr_grid_tex(
@@ -77,6 +79,7 @@ def qr_tbl_tex(
         label_text_color=spec["label_text_color"],
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
+        strict=spec.get("strict") if strict is None else strict,
     )
 
 
@@ -94,6 +97,7 @@ def qr_tbl_svg(
     label_text_color: str = "red",
     known_zero_color: str = "brown",
     decorators: Optional[Any] = None,
+    strict: Optional[bool] = None,
     toolchain_name: Optional[Any] = None,
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
@@ -116,6 +120,7 @@ def qr_tbl_svg(
         label_text_color=label_text_color,
         known_zero_color=known_zero_color,
         decorators=decorators,
+        strict=strict,
     )
 
     return qr_grid_svg(
@@ -130,6 +135,7 @@ def qr_tbl_svg(
         label_text_color=spec["label_text_color"],
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
+        strict=spec.get("strict") if strict is None else strict,
         toolchain_name=_norm_str(toolchain_name),
         crop=_norm_str(crop),
         padding=_norm_padding(padding),
@@ -168,6 +174,7 @@ def qr(
     label_text_color: str = "red",
     known_zero_color: str = "brown",
     decorators: Optional[Any] = None,
+    strict: Optional[bool] = None,
     toolchain_name: Optional[Any] = None,
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
@@ -189,6 +196,7 @@ def qr(
         label_text_color=label_text_color,
         known_zero_color=known_zero_color,
         decorators=decorators,
+        strict=strict,
     )
 
     return qr_grid_svg(
@@ -203,6 +211,7 @@ def qr(
         label_text_color=spec["label_text_color"],
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
+        strict=spec.get("strict") if strict is None else strict,
         toolchain_name=_norm_str(toolchain_name),
         crop=_norm_str(crop),
         padding=_norm_padding(padding),
@@ -227,6 +236,7 @@ def gram_schmidt_qr(
     label_text_color: str = "red",
     known_zero_color: str = "brown",
     decorators: Optional[Any] = None,
+    strict: Optional[bool] = None,
     toolchain_name: Optional[Any] = None,
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
@@ -254,6 +264,7 @@ def gram_schmidt_qr(
         label_text_color=label_text_color,
         known_zero_color=known_zero_color,
         decorators=decorators,
+        strict=strict,
     )
 
     return qr_grid_svg(
@@ -268,6 +279,7 @@ def gram_schmidt_qr(
         label_text_color=spec["label_text_color"],
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
+        strict=spec.get("strict") if strict is None else strict,
         toolchain_name=_norm_str(toolchain_name),
         crop=_norm_str(crop),
         padding=_norm_padding(padding),

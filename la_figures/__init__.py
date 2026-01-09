@@ -30,7 +30,24 @@ from .backsub import (
 from . import ge as ge
 from .ge import ge_trace, trace_to_layer_matrices
 from .convenience_ge import ge as ge_svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
-from .formatting import decorate_tex_entries, latexify, make_decorator
+from .formatting import (
+    decorate_tex_entries,
+    latexify,
+    make_decorator,
+    decorator_box,
+    decorator_color,
+    decorator_bg,
+    decorator_bf,
+    sel_entry,
+    sel_box,
+    sel_row,
+    sel_col,
+    sel_rows,
+    sel_cols,
+    sel_all,
+    sel_vec,
+    sel_vec_range,
+)
 
 __all__ = [
     "EigenDecomposition",
@@ -69,4 +86,17 @@ __all__ = [
     "latexify",
     "make_decorator",
     "decorate_tex_entries",
+    "decorator_box",
+    "decorator_color",
+    "decorator_bg",
+    "decorator_bf",
+    "sel_entry",
+    "sel_box",
+    "sel_row",
+    "sel_col",
+    "sel_rows",
+    "sel_cols",
+    "sel_all",
+    "sel_vec",
+    "sel_vec_range",
 ]
