@@ -141,3 +141,36 @@ def test_ge_legacy_wrapper_supports_array_names():
 
     assert out == "<svg/>"
     assert captured["callouts"]
+
+
+def test_ge_legacy_wrapper_rhs_callout_labels_follow_rhs_size():
+    from la_figures.convenience_ge import ge
+    from matrixlayout import ge as ml_ge
+
+    A0 = sym.Matrix([[1, 2], [3, 4]])
+    E1 = sym.eye(2)
+    A1 = sym.Matrix([[1, 2], [0, 1]])
+    matrices = [[None, A0], [E1, A1]]
+
+    def _extract_labels(callouts):
+        return [c.get("label", "") for c in callouts or []]
+
+    captured = {}
+
+    def fake_svg(**kwargs):
+        captured.update(kwargs)
+        return "<svg/>"
+
+    ge_svg_orig = ml_ge.ge_grid_svg
+    ml_ge.ge_grid_svg = fake_svg
+    try:
+        ge(matrices, array_names=True, Nrhs=1)
+        labels = _extract_labels(captured.get("callouts"))
+        assert any(r"\mid  b" in label for label in labels)
+
+        captured.clear()
+        ge(matrices, array_names=True, Nrhs=2)
+        labels = _extract_labels(captured.get("callouts"))
+        assert any(r"\mid  B" in label for label in labels)
+    finally:
+        ml_ge.ge_grid_svg = ge_svg_orig

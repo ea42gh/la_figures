@@ -148,6 +148,40 @@ def _legacy_array_name_specs(
     return terms
 
 
+def _nrhs_count(Nrhs: Any) -> int:
+    if Nrhs is None:
+        return 0
+    if isinstance(Nrhs, (list, tuple)):
+        return int(sum(int(x) for x in Nrhs))
+    try:
+        import numpy as np
+
+        if isinstance(Nrhs, np.ndarray):
+            return int(np.sum(Nrhs))
+    except Exception:
+        pass
+    try:
+        return int(Nrhs)
+    except Exception:
+        return 0
+
+
+def _coerce_rhs_labels(rhs_list: Sequence[str], Nrhs: Any) -> List[str]:
+    labels = list(rhs_list)
+    count = _nrhs_count(Nrhs)
+    if count <= 0:
+        return labels
+    default_rhs = "b" if count == 1 else "B"
+    if len(labels) <= 1:
+        return [labels[0] if labels else "A", default_rhs]
+    last = labels[-1]
+    if count == 1 and last == "B":
+        labels[-1] = "b"
+    elif count > 1 and last == "b":
+        labels[-1] = "B"
+    return labels
+
+
 def _legacy_name_specs_to_callouts(
     matrices: Sequence[Sequence[Any]],
     name_specs: Sequence[Tuple[Tuple[int, int], str, str]],
@@ -707,8 +741,9 @@ def ge(
             rhs_list = list(rhs)
         except Exception:
             lhs, rhs_list = "E", ["A"]
+        rhs_list = _coerce_rhs_labels([str(x) for x in rhs_list], Nrhs)
         n_rows = len(matrices or [])
-        name_specs = _legacy_array_name_specs(n_rows, str(lhs), [str(x) for x in rhs_list], start_index=start_index)
+        name_specs = _legacy_array_name_specs(n_rows, str(lhs), rhs_list, start_index=start_index)
         callouts.extend(_legacy_name_specs_to_callouts(matrices, name_specs, color="blue"))
 
     if func is not None:
