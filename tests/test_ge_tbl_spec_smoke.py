@@ -19,6 +19,9 @@ def test_ge_tbl_spec_and_tex_smoke():
     assert "\\begin{NiceArray}" in tex
     assert "\\end{NiceArray}" in tex
 
+    spec = la_figures.ge_tbl_spec(A, array_names=True)
+    assert spec.get("callouts")
+
 
 def test_ge_tbl_layout_spec_uses_typed_layout():
     import pytest

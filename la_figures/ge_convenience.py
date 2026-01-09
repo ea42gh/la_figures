@@ -403,6 +403,7 @@ def _build_ge_bundle(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
     strict: Optional[bool] = None,
@@ -461,6 +462,25 @@ def _build_ge_bundle(
         for (r, c) in pivot_positions
     ]
 
+    extra_callouts: List[Dict[str, Any]] = []
+    if array_names is not None:
+        explicit_names = array_names is not True
+        try:
+            lhs, rhs = array_names
+            rhs_list = list(rhs)
+        except Exception:
+            lhs, rhs_list = "E", ["A"]
+        rhs_list = [str(x) for x in rhs_list]
+        if not explicit_names:
+            rhs_list = _coerce_rhs_labels(rhs_list, tr.Nrhs)
+        name_specs = _legacy_array_name_specs(len(layers["matrices"]), str(lhs), rhs_list, start_index=index_base)
+        extra_callouts = _legacy_name_specs_to_callouts(layers["matrices"], name_specs, color="blue")
+
+    if callouts is None:
+        callouts = extra_callouts or None
+    elif isinstance(callouts, list) and extra_callouts:
+        callouts = list(callouts) + extra_callouts
+
     spec: Dict[str, Any] = dict(
         matrices=layers["matrices"],
         Nrhs=int(tr.Nrhs or 0),
@@ -517,6 +537,7 @@ def ge_tbl_spec(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
     strict: Optional[bool] = None,
@@ -542,6 +563,7 @@ def ge_tbl_spec(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
         strict=bool(strict) if strict is not None else False,
@@ -565,6 +587,7 @@ def ge_tbl_layout_spec(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
     strict: Optional[bool] = None,
@@ -587,6 +610,7 @@ def ge_tbl_layout_spec(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
         strict=bool(strict) if strict is not None else False,
@@ -845,6 +869,7 @@ def ge_tbl_bundle(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
     strict: Optional[bool] = None,
@@ -867,6 +892,7 @@ def ge_tbl_bundle(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
         strict=bool(strict) if strict is not None else False,
