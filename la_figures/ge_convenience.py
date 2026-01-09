@@ -371,6 +371,7 @@ def _build_ge_bundle(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     # Julia interop typically passes the RHS as a keyword named `rhs`.
     # Keep the internal naming (`ref_rhs`) but accept `rhs` as an alias.
@@ -441,6 +442,7 @@ def _build_ge_bundle(
         outer_delims=bool(outer_delims),
         outer_hspace_mm=int(outer_hspace_mm),
         cell_align=str(cell_align),
+        strict=bool(strict) if strict is not None else False,
     )
 
     typed_layout = _build_typed_layout_spec(
@@ -483,6 +485,7 @@ def ge_tbl_spec(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec for :func:`matrixlayout.ge.ge_grid_tex`.
 
@@ -507,6 +510,7 @@ def ge_tbl_spec(
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
+        strict=bool(strict) if strict is not None else False,
     )["spec"]
 
 
@@ -529,6 +533,7 @@ def ge_tbl_layout_spec(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec using :class:`matrixlayout.specs.GELayoutSpec`."""
 
@@ -550,6 +555,7 @@ def ge_tbl_layout_spec(
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
+        strict=bool(strict) if strict is not None else False,
     )
 
     return {
@@ -558,6 +564,7 @@ def ge_tbl_layout_spec(
         "layout": bundle["typed_layout"],
         "outer_hspace_mm": int(outer_hspace_mm),
         "cell_align": str(cell_align),
+        "strict": bool(strict) if strict is not None else False,
     }
 
 
@@ -585,6 +592,7 @@ def ge(
     output_dir: Optional[Any] = None,
     frame: Any = None,
     decorators: Optional[Sequence[Any]] = None,
+    strict: Optional[bool] = None,
     **render_opts: Any,
 ) -> str:
     """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
@@ -783,6 +791,7 @@ def ge(
         create_medium_nodes=True if (ref_path_list or needs_medium_nodes) else None,
         fig_scale=fig_scale,
         decorators=decorators,
+        strict=bool(strict) if strict is not None else False,
         output_dir=output_dir,
         output_stem=output_stem or "output",
         frame=frame,
@@ -809,6 +818,7 @@ def ge_tbl_bundle(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a bundle containing the trace, decorations, spec, and TeX."""
 
@@ -830,6 +840,7 @@ def ge_tbl_bundle(
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
+        strict=bool(strict) if strict is not None else False,
     )
 
     # Prefer the notebook-oriented bundle API when available. This avoids
@@ -879,6 +890,7 @@ def ge_tbl_tex(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> str:
     """Compute a GE-table TeX document (no rendering)."""
 
@@ -900,6 +912,7 @@ def ge_tbl_tex(
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
+        strict=bool(strict) if strict is not None else False,
     )["tex"]
 
 
@@ -926,6 +939,7 @@ def ge_tbl_svg(
     callouts: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    strict: Optional[bool] = None,
 ) -> str:
     """Render a GE-table to SVG via matrixlayout (strict rendering boundary)."""
 
@@ -947,6 +961,7 @@ def ge_tbl_svg(
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
+        strict=bool(strict) if strict is not None else False,
     )
 
     from matrixlayout.ge import ge_grid_svg
