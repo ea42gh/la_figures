@@ -172,5 +172,10 @@ def test_ge_legacy_wrapper_rhs_callout_labels_follow_rhs_size():
         ge(matrices, array_names=True, Nrhs=2)
         labels = _extract_labels(captured.get("callouts"))
         assert any(r"\mid  B" in label for label in labels)
+
+        captured.clear()
+        ge(matrices, array_names=["E", ["A", "b"]], Nrhs=2)
+        labels = _extract_labels(captured.get("callouts"))
+        assert any(r"\mid  b" in label for label in labels)
     finally:
         ml_ge.ge_grid_svg = ge_svg_orig

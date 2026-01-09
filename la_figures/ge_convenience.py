@@ -736,12 +736,15 @@ def ge(
 
     callouts: List[Dict[str, Any]] = []
     if array_names is not None:
+        explicit_names = array_names is not True
         try:
             lhs, rhs = array_names
             rhs_list = list(rhs)
         except Exception:
             lhs, rhs_list = "E", ["A"]
-        rhs_list = _coerce_rhs_labels([str(x) for x in rhs_list], Nrhs)
+        rhs_list = [str(x) for x in rhs_list]
+        if not explicit_names:
+            rhs_list = _coerce_rhs_labels(rhs_list, Nrhs)
         n_rows = len(matrices or [])
         name_specs = _legacy_array_name_specs(n_rows, str(lhs), rhs_list, start_index=start_index)
         callouts.extend(_legacy_name_specs_to_callouts(matrices, name_specs, color="blue"))
