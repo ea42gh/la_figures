@@ -369,6 +369,7 @@ def _build_ge_bundle(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     # Julia interop typically passes the RHS as a keyword named `rhs`.
@@ -435,6 +436,7 @@ def _build_ge_bundle(
         txt_with_locs=decor.get("txt_with_locs"),
         rowechelon_paths=decor.get("rowechelon_paths"),
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
         outer_delims=bool(outer_delims),
         outer_hspace_mm=int(outer_hspace_mm),
@@ -479,6 +481,7 @@ def ge_tbl_spec(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec for :func:`matrixlayout.ge.ge_grid_tex`.
@@ -502,6 +505,7 @@ def ge_tbl_spec(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
     )["spec"]
 
@@ -523,6 +527,7 @@ def ge_tbl_layout_spec(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec using :class:`matrixlayout.specs.GELayoutSpec`."""
@@ -543,6 +548,7 @@ def ge_tbl_layout_spec(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
     )
 
@@ -578,6 +584,7 @@ def ge(
     keep_file: Optional[str] = None,
     output_dir: Optional[Any] = None,
     frame: Any = None,
+    decorators: Optional[Sequence[Any]] = None,
     **render_opts: Any,
 ) -> str:
     """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
@@ -775,6 +782,7 @@ def ge(
         create_extra_nodes=True if (ref_path_list or needs_medium_nodes) else None,
         create_medium_nodes=True if (ref_path_list or needs_medium_nodes) else None,
         fig_scale=fig_scale,
+        decorators=decorators,
         output_dir=output_dir,
         output_stem=output_stem or "output",
         frame=frame,
@@ -799,6 +807,7 @@ def ge_tbl_bundle(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> Dict[str, Any]:
     """Return a bundle containing the trace, decorations, spec, and TeX."""
@@ -819,6 +828,7 @@ def ge_tbl_bundle(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
     )
 
@@ -867,6 +877,7 @@ def ge_tbl_tex(
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> str:
     """Compute a GE-table TeX document (no rendering)."""
@@ -887,6 +898,7 @@ def ge_tbl_tex(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
     )["tex"]
 
@@ -912,6 +924,7 @@ def ge_tbl_svg(
     padding: Tuple[int, int, int, int] = (2, 2, 2, 2),
     frame: Any = None,
     callouts: Optional[Any] = None,
+    decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
 ) -> str:
     """Render a GE-table to SVG via matrixlayout (strict rendering boundary)."""
@@ -932,6 +945,7 @@ def ge_tbl_svg(
         outer_hspace_mm=outer_hspace_mm,
         cell_align=cell_align,
         callouts=callouts,
+        decorators=decorators,
         fig_scale=fig_scale,
     )
 

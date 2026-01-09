@@ -94,6 +94,7 @@ def eig_tbl_tex(
     mmS: int = 4,
     fig_scale: Optional[Union[int, float]] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    decorators: Optional[Any] = None,
 ) -> str:
     """Compute an eigen-table TeX document."""
 
@@ -119,6 +120,7 @@ def eig_tbl_tex(
         mmS=mmS,
         fig_scale=fig_scale,
         preamble=preamble,
+        decorators=decorators,
     )
 
 
@@ -137,6 +139,7 @@ def eig_tbl_svg(
     fig_scale: Optional[Union[int, float]] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
     sz: Optional[Tuple[int, int]] = None,
+    decorators: Optional[Any] = None,
     toolchain_name: Optional[Any] = None,
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
@@ -167,6 +170,7 @@ def eig_tbl_svg(
         fig_scale=fig_scale,
         preamble=preamble,
         sz=sz,
+        decorators=decorators,
         toolchain_name=_norm_str(toolchain_name),
         crop=_norm_str(crop),
         padding=_norm_padding(padding),
@@ -215,6 +219,7 @@ def svd_tbl_tex(
     fig_scale: Optional[Union[int, float]] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
     sz: Optional[Tuple[int, int]] = None,
+    decorators: Optional[Any] = None,
 ) -> str:
     """Compute an SVD-table TeX document."""
 
@@ -241,6 +246,7 @@ def svd_tbl_tex(
         fig_scale=fig_scale,
         preamble=preamble,
         sz=sz,
+        decorators=decorators,
     )
 
 
@@ -259,6 +265,7 @@ def svd_tbl_svg(
     fig_scale: Optional[Union[int, float]] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
     sz: Optional[Tuple[int, int]] = None,
+    decorators: Optional[Any] = None,
     toolchain_name: Optional[Any] = None,
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
@@ -289,6 +296,7 @@ def svd_tbl_svg(
         fig_scale=fig_scale,
         preamble=preamble,
         sz=sz,
+        decorators=decorators,
         toolchain_name=_norm_str(toolchain_name),
         crop=_norm_str(crop),
         padding=_norm_padding(padding),

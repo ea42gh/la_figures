@@ -6,7 +6,7 @@ formatting policy consistent across packages.
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Callable, Iterable, Optional, Tuple
 
 
 def latexify(x: Any) -> str:
@@ -46,5 +46,41 @@ def latexify(x: Any) -> str:
 
     return str(x)
 
+def make_decorator(**kwargs: Any) -> Callable[[str], str]:
+    """Return a decorator function for TeX strings (legacy-compatible)."""
+    try:
+        from matrixlayout.formatting import make_decorator as _make_decorator  # type: ignore
+    except Exception:
+        _make_decorator = None
+    if _make_decorator is not None:
+        return _make_decorator(**kwargs)
+    raise RuntimeError("matrixlayout is required for make_decorator")
 
-__all__ = ["latexify"]
+
+def decorate_tex_entries(
+    matrices: Any,
+    gM: int,
+    gN: int,
+    decorator: Callable[[str], str],
+    *,
+    entries: Optional[Iterable[Tuple[int, int]]] = None,
+    formater: Callable[[Any], str] = latexify,
+) -> Any:
+    """Apply a decorator to selected entries in a grid matrix (in-place)."""
+    try:
+        from matrixlayout.formatting import decorate_tex_entries as _decorate_tex_entries  # type: ignore
+    except Exception:
+        _decorate_tex_entries = None
+    if _decorate_tex_entries is None:
+        raise RuntimeError("matrixlayout is required for decorate_tex_entries")
+    return _decorate_tex_entries(
+        matrices,
+        gM,
+        gN,
+        decorator,
+        entries=entries,
+        formater=formater,
+    )
+
+
+__all__ = ["latexify", "make_decorator", "decorate_tex_entries"]

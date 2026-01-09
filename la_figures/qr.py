@@ -123,6 +123,7 @@ def qr_tbl_spec(
     label_color: str = "blue",
     label_text_color: str = "red",
     known_zero_color: str = "brown",
+    decorators: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec for :func:`matrixlayout.qr.qr_grid_tex`."""
 
@@ -137,6 +138,7 @@ def qr_tbl_spec(
         "label_color": label_color,
         "label_text_color": label_text_color,
         "known_zero_color": known_zero_color,
+        "decorators": decorators,
     }
 
 
@@ -152,6 +154,7 @@ def qr_tbl_layout_spec(
     label_color: str = "blue",
     label_text_color: str = "red",
     known_zero_color: str = "brown",
+    decorators: Optional[Sequence[Any]] = None,
 ) -> Any:
     """Return a typed QR layout spec (``QRGridSpec``) for matrixlayout."""
 
@@ -168,6 +171,7 @@ def qr_tbl_layout_spec(
         label_color=label_color,
         label_text_color=label_text_color,
         known_zero_color=known_zero_color,
+        decorators=decorators,
     )
     return QRGridSpec.from_dict(spec)
 
@@ -183,6 +187,7 @@ def qr_tbl_spec_from_matrices(
     label_color: str = "blue",
     label_text_color: str = "red",
     known_zero_color: str = "brown",
+    decorators: Optional[Sequence[Any]] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec from a precomputed matrix grid."""
 
@@ -196,4 +201,5 @@ def qr_tbl_spec_from_matrices(
         "label_color": label_color,
         "label_text_color": label_text_color,
         "known_zero_color": known_zero_color,
+        "decorators": decorators,
     }
