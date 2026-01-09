@@ -5,31 +5,8 @@ from __future__ import annotations
 from typing import Any, Dict, Optional
 
 from .formatting import latexify
+from .convenience_utils import norm_str, norm_padding
 from .qr import gram_schmidt_qr_matrices, qr_tbl_spec, qr_tbl_spec_from_matrices
-
-
-def _norm_str(x: Any) -> Any:
-    if x is None:
-        return None
-    if isinstance(x, str):
-        s = x
-    else:
-        s = str(x)
-    if s.startswith(":"):
-        s = s[1:]
-    return s
-
-
-def _norm_padding(padding: Any) -> Any:
-    if padding is None:
-        return None
-    if isinstance(padding, tuple) and len(padding) == 4:
-        return padding
-    try:
-        seq = list(padding)
-    except Exception:
-        return padding
-    return tuple(seq)
 
 
 def qr_tbl_tex(
@@ -37,7 +14,7 @@ def qr_tbl_tex(
     W: Any,
     *,
     array_names: Any = True,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     fig_scale: Optional[Any] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n",
     extension: str = "",
@@ -69,7 +46,7 @@ def qr_tbl_tex(
 
     return qr_grid_tex(
         matrices=spec["matrices"],
-        formater=formater,
+        formatter=formatter,
         array_names=spec["array_names"],
         fig_scale=spec["fig_scale"],
         preamble=spec["preamble"],
@@ -88,7 +65,7 @@ def qr_tbl_svg(
     W: Any,
     *,
     array_names: Any = True,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     fig_scale: Optional[Any] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n",
     extension: str = "",
@@ -125,7 +102,7 @@ def qr_tbl_svg(
 
     return qr_grid_svg(
         matrices=spec["matrices"],
-        formater=formater,
+        formatter=formatter,
         array_names=spec["array_names"],
         fig_scale=spec["fig_scale"],
         preamble=spec["preamble"],
@@ -136,9 +113,9 @@ def qr_tbl_svg(
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
         strict=spec.get("strict") if strict is None else strict,
-        toolchain_name=_norm_str(toolchain_name),
-        crop=_norm_str(crop),
-        padding=_norm_padding(padding),
+        toolchain_name=norm_str(toolchain_name),
+        crop=norm_str(crop),
+        padding=norm_padding(padding),
         frame=frame,
         output_dir=output_dir,
     )
@@ -164,7 +141,7 @@ def qr_tbl_bundle(
 def qr(
     matrices: Any,
     *,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     array_names: Any = True,
     fig_scale: Optional[Any] = None,
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n",
@@ -201,7 +178,7 @@ def qr(
 
     return qr_grid_svg(
         matrices=spec["matrices"],
-        formater=formater,
+        formatter=formatter,
         array_names=spec["array_names"],
         fig_scale=spec["fig_scale"],
         preamble=spec["preamble"],
@@ -212,9 +189,9 @@ def qr(
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
         strict=spec.get("strict") if strict is None else strict,
-        toolchain_name=_norm_str(toolchain_name),
-        crop=_norm_str(crop),
-        padding=_norm_padding(padding),
+        toolchain_name=norm_str(toolchain_name),
+        crop=norm_str(crop),
+        padding=norm_padding(padding),
         frame=frame,
         output_dir=output_dir,
     )
@@ -224,7 +201,7 @@ def gram_schmidt_qr(
     A: Any,
     W: Any,
     *,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     array_names: Any = True,
     allow_rank_deficient: bool = False,
     rank_deficient: Optional[str] = None,
@@ -269,7 +246,7 @@ def gram_schmidt_qr(
 
     return qr_grid_svg(
         matrices=spec["matrices"],
-        formater=formater,
+        formatter=formatter,
         array_names=spec["array_names"],
         fig_scale=spec["fig_scale"],
         preamble=spec["preamble"],
@@ -280,9 +257,9 @@ def gram_schmidt_qr(
         known_zero_color=spec["known_zero_color"],
         decorators=spec.get("decorators"),
         strict=spec.get("strict") if strict is None else strict,
-        toolchain_name=_norm_str(toolchain_name),
-        crop=_norm_str(crop),
-        padding=_norm_padding(padding),
+        toolchain_name=norm_str(toolchain_name),
+        crop=norm_str(crop),
+        padding=norm_padding(padding),
         frame=frame,
         output_dir=output_dir,
     )

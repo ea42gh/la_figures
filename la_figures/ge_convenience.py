@@ -572,7 +572,7 @@ def ge(
     matrices: Sequence[Sequence[Any]],
     *,
     Nrhs: Any = 0,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     pivot_list: Optional[Sequence[Any]] = None,
     bg_for_entries: Optional[Any] = None,
     variable_colors: Sequence[str] = ("red", "blue"),
@@ -596,15 +596,6 @@ def ge(
     **render_opts: Any,
 ) -> str:
     """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
-
-    unsupported = {
-        "func": None,
-        "tmp_dir": None,
-        "keep_file": None,
-    }
-    missing = [k for k, v in unsupported.items() if v not in (None, [], {}, ())]
-    if missing:
-        raise NotImplementedError(f"Compatibility options not yet supported in new GE: {', '.join(missing)}")
 
     output_stem: Optional[str] = None
     if keep_file:
@@ -778,7 +769,7 @@ def ge(
     return ge_grid_svg(
         matrices=matrices,
         Nrhs=Nrhs,
-        formater=formater,
+        formatter=formatter,
         outer_hspace_mm=outer_hspace_mm,
         legacy_submatrix_names=True,
         legacy_format=True,

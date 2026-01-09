@@ -177,7 +177,7 @@ def test_qr_tex_matches_legacy_for_2x2():
     matrices = compute_qr_matrices(A, W)
 
     legacy = _legacy_qr_tex(matrices)
-    new = qr_grid_tex(matrices=matrices, formater=str)
+    new = qr_grid_tex(matrices=matrices, formatter=str)
     assert _compare_blocks(legacy, new)
 
 
@@ -200,7 +200,7 @@ def test_qr_tex_matches_legacy_for_3x2():
     matrices = compute_qr_matrices(A, W)
 
     legacy = _legacy_qr_tex(matrices)
-    new = qr_grid_tex(matrices=matrices, formater=str)
+    new = qr_grid_tex(matrices=matrices, formatter=str)
     assert _compare_blocks(legacy, new)
 
 
@@ -223,5 +223,5 @@ def test_qr_tex_matches_legacy_for_rank_deficient():
     matrices = compute_qr_matrices(A, W)
 
     legacy = _legacy_qr_tex(matrices)
-    new = qr_grid_tex(matrices=matrices, formater=str)
+    new = qr_grid_tex(matrices=matrices, formatter=str)
     assert _compare_blocks(legacy, new)

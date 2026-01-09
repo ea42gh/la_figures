@@ -149,7 +149,7 @@ def test_qr_layout_matches_legacy(A, W):
 
     matrices = la_figures.compute_qr_matrices(A, W)
     legacy = _legacy_qr_layout(matrices)
-    new = qr_grid_tex(matrices=matrices, formater=str)
+    new = qr_grid_tex(matrices=matrices, formatter=str)
 
     assert _normalize(_extract_mat_format(new)) == _normalize(legacy.format)
     assert _normalize(_extract_mat_rep(new)) == _normalize("\n".join(legacy.tex_list))

@@ -14,48 +14,16 @@ from __future__ import annotations
 from typing import Any, Dict, Optional, Tuple, Union
 
 from .formatting import latexify
+from .convenience_utils import norm_str, norm_padding
 
 from .eig import eig_tbl_spec
 from .svd import svd_tbl_spec
 
 
-def _norm_str(x: Any) -> Any:
-    """Normalize Julia/PythonCall string-like values.
-
-    - Preserve None.
-    - Convert non-str to str.
-    - Strip a leading ':' (common for Julia Symbols).
-    """
-
-    if x is None:
-        return None
-    if isinstance(x, str):
-        s = x
-    else:
-        s = str(x)
-    if s.startswith(":"):
-        s = s[1:]
-    return s
-
-
-
-
 def _julia_str(x: Any) -> Any:
-    """Alias for :func:`_norm_str` kept for Julia interop tests/backward-compat."""
+    """Alias for :func:`norm_str` kept for Julia interop tests/backward-compat."""
 
-    return _norm_str(x)
-
-
-def _norm_padding(padding: Any) -> Any:
-    if padding is None:
-        return None
-    if isinstance(padding, tuple) and len(padding) == 4:
-        return padding
-    try:
-        seq = list(padding)
-    except Exception:
-        return padding
-    return tuple(seq)
+    return norm_str(x)
 
 
 def _import_eigproblem_tex():
@@ -88,7 +56,7 @@ def eig_tbl_tex(
     eig_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
     case: Optional[Any] = None,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -114,9 +82,9 @@ def eig_tbl_tex(
 
     return eigproblem_tex(
         spec,
-        case=_norm_str(case),
-        formater=formater,
-        color=_norm_str(color),
+        case=norm_str(case),
+        formatter=formatter,
+        color=norm_str(color),
         mmLambda=mmLambda,
         mmS=mmS,
         fig_scale=fig_scale,
@@ -134,7 +102,7 @@ def eig_tbl_svg(
     eig_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
     case: Optional[Any] = None,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -165,9 +133,9 @@ def eig_tbl_svg(
 
     return eigproblem_svg(
         spec,
-        case=_norm_str(case),
-        formater=formater,
-        color=_norm_str(color),
+        case=norm_str(case),
+        formatter=formatter,
+        color=norm_str(color),
         mmLambda=mmLambda,
         mmS=mmS,
         fig_scale=fig_scale,
@@ -175,9 +143,9 @@ def eig_tbl_svg(
         sz=sz,
         decorators=decorators,
         strict=bool(strict) if strict is not None else False,
-        toolchain_name=_norm_str(toolchain_name),
-        crop=_norm_str(crop),
-        padding=_norm_padding(padding),
+        toolchain_name=norm_str(toolchain_name),
+        crop=norm_str(crop),
+        padding=norm_padding(padding),
         frame=frame,
     )
 
@@ -216,7 +184,7 @@ def svd_tbl_tex(
     eig_digits: Optional[int] = None,
     sigma_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -244,8 +212,8 @@ def svd_tbl_tex(
     return eigproblem_tex(
         spec,
         case="SVD",
-        formater=formater,
-        color=_norm_str(color),
+        formatter=formatter,
+        color=norm_str(color),
         mmLambda=mmLambda,
         mmS=mmS,
         fig_scale=fig_scale,
@@ -264,7 +232,7 @@ def svd_tbl_svg(
     eig_digits: Optional[int] = None,
     sigma_digits: Optional[int] = None,
     vec_digits: Optional[int] = None,
-    formater: Any = latexify,
+    formatter: Any = latexify,
     color: Any = "blue",
     mmLambda: int = 8,
     mmS: int = 4,
@@ -296,8 +264,8 @@ def svd_tbl_svg(
     return eigproblem_svg(
         spec,
         case="SVD",
-        formater=formater,
-        color=_norm_str(color),
+        formatter=formatter,
+        color=norm_str(color),
         mmLambda=mmLambda,
         mmS=mmS,
         fig_scale=fig_scale,
@@ -305,9 +273,9 @@ def svd_tbl_svg(
         sz=sz,
         decorators=decorators,
         strict=bool(strict) if strict is not None else False,
-        toolchain_name=_norm_str(toolchain_name),
-        crop=_norm_str(crop),
-        padding=_norm_padding(padding),
+        toolchain_name=norm_str(toolchain_name),
+        crop=norm_str(crop),
+        padding=norm_padding(padding),
         frame=frame,
     )
 

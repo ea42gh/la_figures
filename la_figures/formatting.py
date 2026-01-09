@@ -196,7 +196,7 @@ def decorate_tex_entries(
     decorator: Callable[[str], str],
     *,
     entries: Optional[Iterable[Tuple[int, int]]] = None,
-    formater: Callable[[Any], str] = latexify,
+    formatter: Callable[[Any], str] = latexify,
 ) -> Any:
     """Apply a decorator to selected entries in a grid matrix (in-place)."""
     try:
@@ -211,7 +211,7 @@ def decorate_tex_entries(
         gN,
         decorator,
         entries=entries,
-        formater=formater,
+        formatter=formatter,
     )
 
 

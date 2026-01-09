@@ -80,7 +80,14 @@ def test_julia_symbol_normalization_in_convenience_wrappers():
         def __str__(self):
             return ":tight"
 
+    class FakePyCallSymbol:
+        __module__ = "pycall"
+
+        def __str__(self):
+            return "Symbol(:tight)"
+
     assert _julia_str(FakeSymbol()) == "tight"
+    assert _julia_str(FakePyCallSymbol()) == "tight"
 
 
 def test_convenience_tex_wrappers_smoke():

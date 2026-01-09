@@ -11,7 +11,7 @@ def test_eig_tbl_tex_decorates_eigenbasis_entry():
 
     tex = eig_tbl_tex(
         A,
-        formater=sym.latex,
+        formatter=sym.latex,
         decorators=[{"target": "eigenbasis", "entries": [(0, 0, 0)], "decorator": dec}],
         preamble="",
     )
@@ -29,7 +29,7 @@ def test_svd_tbl_tex_decorates_sigma_matrix_entry():
 
     tex = svd_tbl_tex(
         A,
-        formater=sym.latex,
+        formatter=sym.latex,
         decorators=[{"matrix": "sigma", "entries": [(0, 0)], "decorator": dec}],
         preamble="",
     )
