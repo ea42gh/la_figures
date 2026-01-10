@@ -22,6 +22,10 @@ def test_ge_tbl_spec_and_tex_smoke():
     spec = la_figures.ge_tbl_spec(A, array_names=True)
     assert spec.get("callouts")
 
+    spec = la_figures.ge_tbl_spec(A, show_pivots=True)
+    assert spec.get("codebefore")
+    assert spec.get("rowechelon_paths")
+
 
 def test_ge_tbl_layout_spec_uses_typed_layout():
     import pytest

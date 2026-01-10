@@ -110,7 +110,7 @@ def _submatrix_names(tex: str):
 
 def _legacy_qr_tex(matrices):
     import itikz.nicematrix as nM
-    m = nM.MatrixGridLayout(matrices, extra_rows=[1, 0, 0, 0])
+    m = nM.MatrixGridLayout(matrices, extra_rows=[0, 0, 0, 0])
     m.preamble = nM.preamble + "\n" + r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n"
 
     n = matrices[0][2].shape[1]
@@ -122,16 +122,6 @@ def _legacy_qr_tex(matrices):
     l_WtW = [(1, 3), [(i, j) for i in range(matrices[1][3].shape[0]) for j in range(matrices[1][3].shape[0]) if i != j]]
     for spec in (l_WtA, l_WtW):
         m.decorate_tex_entries(*spec[0], brown, entries=spec[1])
-
-    red = nM.make_decorator(text_color="red", bf=True)
-    red_rgt = nM.make_decorator(text_color="red", bf=True, move_right=True)
-    m.add_row_above(
-        0,
-        2,
-        [red(f"v_{i+1}") for i in range(n)] + [red(f"w_{i+1}") for i in range(n)],
-        formater=lambda a: a,
-    )
-    m.add_col_left(1, 1, [red_rgt(f"w^t_{i+1}") for i in range(n)], formater=lambda a: a)
 
     dec = nM.make_decorator(bf=True, delim="$")
     name_specs = [

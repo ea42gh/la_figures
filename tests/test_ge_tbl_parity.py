@@ -21,7 +21,5 @@ def test_ge_tbl_spec_pivot_locs_rebased_to_final_layer():
     A = sym.Matrix([[1, 2], [3, 4]])
     spec = ge_tbl_spec(A, show_pivots=True)
 
-    assert spec["pivot_locs"] == [
-        ("(3-3)(3-3)", "draw, thick, rounded corners"),
-        ("(4-4)(4-4)", "draw, thick, rounded corners"),
-    ]
+    assert spec["pivot_locs"] == []
+    assert spec["decorators"]

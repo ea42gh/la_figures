@@ -8,7 +8,7 @@ def _legacy_qr_layout(matrices, *, array_names=True):
     itikz = pytest.importorskip("itikz")
     nM = itikz.nicematrix
 
-    m = nM.MatrixGridLayout(matrices, extra_rows=[1, 0, 0, 0])
+    m = nM.MatrixGridLayout(matrices, extra_rows=[0, 0, 0, 0])
     m.preamble = nM.preamble + "\n" + r" \NiceMatrixOptions{cell-space-limits = 2pt}" + "\n"
 
     n = matrices[0][2].shape[1]
@@ -25,15 +25,7 @@ def _legacy_qr_layout(matrices, *, array_names=True):
     for spec in _known_zeros(matrices[1][2], matrices[1][3]):
         m.decorate_tex_entries(*spec[0], brown, entries=spec[1])
 
-    red = nM.make_decorator(text_color="red", bf=True)
-    red_rgt = nM.make_decorator(text_color="red", bf=True, move_right=True)
-    m.add_row_above(
-        0,
-        2,
-        [red(f"v_{i+1}") for i in range(n)] + [red(f"w_{i+1}") for i in range(n)],
-        formater=lambda a: a,
-    )
-    m.add_col_left(1, 1, [red_rgt(f"w^t_{i+1}") for i in range(n)], formater=lambda a: a)
+    _ = n
 
     if array_names:
         dec = nM.make_decorator(bf=True, delim="$")

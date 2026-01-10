@@ -531,7 +531,7 @@ def decorate_ge(
     ref_path_case: str = "vh",
     ref_path_block_col: int = 1,
     pivot_block_col: int = 1,
-    pivot_color: str = "yellow!15",
+    pivot_color: str = "yellow!40",
     missing_pivot_color: str = "gray!20",
     path_color: str = "blue,line width=0.5mm",
 ) -> Dict[str, Any]:
@@ -676,7 +676,10 @@ def decorate_ge(
             except Exception:
                 continue
             pivot_dict[(level, 0)] = [(level, 0), [(c, c)]]
-            path_dict[(level, 0)] = [level, 0, [(c, c)], "vv", path_color]
+            if ev.data.get("gj"):
+                path_dict[(level, 0)] = [level, 0, [(0, c)], "vv", path_color]
+            else:
+                path_dict[(level, 0)] = [level, 0, [(c, c)], "vv", path_color]
             if ev.data.get("gj"):
                 bg_dict[(level, 0)] = [level, 0, [(c, c), [(0, c), (M - 1, c)]], pivot_color, 1]
             else:

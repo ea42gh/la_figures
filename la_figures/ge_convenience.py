@@ -19,7 +19,7 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence, Tuple, Union
 
 from .ge import GETrace, decorate_ge, ge_trace, trace_to_layer_matrices
-from .formatting import latexify
+from .formatting import latexify, make_decorator
 
 
 def _matrix_shape(mat: Any) -> Tuple[int, int]:
@@ -187,10 +187,11 @@ def _legacy_name_specs_to_callouts(
     name_specs: Sequence[Tuple[Tuple[int, int], str, str]],
     *,
     color: str = "blue",
+    legacy_submatrix_names: bool = True,
 ) -> List[Dict[str, Any]]:
     from matrixlayout.ge import ge_grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=True)
+    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
     name_map = {(s.block_row, s.block_col): s.name for s in spans}
 
     def _strip_math(s: str) -> Tuple[str, bool]:
@@ -234,11 +235,13 @@ def _legacy_name_specs_to_callouts(
 def _legacy_ref_path_list_to_rowechelon_paths(
     matrices: Sequence[Sequence[Any]],
     ref_path_list: Sequence[Any],
+    *,
+    legacy_submatrix_names: bool = True,
 ) -> List[str]:
     out: List[str] = []
     from matrixlayout.ge import ge_grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=True)
+    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
     span_map = {(s.block_row, s.block_col): s for s in spans}
     for spec in ref_path_list:
         if not isinstance(spec, (list, tuple)) or len(spec) < 3:
@@ -248,6 +251,7 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         case = spec[3] if len(spec) > 3 else "hh"
         color = spec[4] if len(spec) > 4 else "blue,line width=0.4mm"
         adj = spec[5] if len(spec) > 5 else 0.1
+        left_pad = spec[6] if len(spec) > 6 else 0.0
         span = span_map.get((gM, gN))
         if span is None:
             continue
@@ -259,18 +263,35 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         tlc = span.col_start - 1
         name = span.name
 
-        pad_pt = 2.0
+        def coords(i: int, j: int) -> str:
+            if i >= shape[0]:
+                if gN == 0 and j == 0:
+                    x = r"\x1"
+                else:
+                    x = r"\x2" if j >= shape[1] else r"\x4"
+                y = r"\y2"
+                p = f"({x},{y})"
+            elif j >= shape[1]:
+                x = r"\x2"
+                y = r"\y4"
+                p = f"({x},{y})"
+            elif j == 0:
+                x = r"\x1"
+                y = r"\y1" if i == 0 else r"\y3"
+                p = f"({x},{y})"
+            else:
+                x = f"{i + 1 + tlr}"
+                y = f"{j + 1 + tlc}"
+                p = f"({x}-|{y})"
 
-        def _corner_expr(i: int, j: int, which: str) -> str:
-            ii = min(max(i, 0), shape[0] - 1)
-            jj = min(max(j, 0), shape[1] - 1)
-            base = f"({ii + 1 + tlr}-{jj + 1 + tlc}.{which})"
-            dx = -pad_pt if "west" in which else pad_pt
-            dy = pad_pt if "north" in which else -pad_pt
-            return f"($ {base} + ({dx}pt,{dy}pt) $)"
+            if j == 0 and left_pad:
+                p = f"($ {p} + (-{left_pad:2},0) $)"
+            elif j != 0 and j < shape[1] and adj != 0:
+                p = f"($ {p} + ({adj:2},0) $)"
+            return p
 
         cur = pivots[0]
-        ll = [cur] if (case in ("vv", "vh")) else []
+        ll = [cur] if (case == "vv") or (case == "vh") else []
         for nxt in pivots[1:]:
             if cur[0] != nxt[0]:
                 cur = (cur[0] + 1, cur[1])
@@ -285,7 +306,7 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         if len(ll) == 0 and case == "hv":
             ll = [(pivots[0][0] + 1, pivots[0][0]), (shape[0], pivots[0][1])]
 
-        if case in ("hh", "vh"):
+        if (case == "hh") or (case == "vh"):
             if cur[0] != shape[0]:
                 cur = (cur[0] + 1, cur[1])
                 ll.append(cur)
@@ -293,36 +314,24 @@ def _legacy_ref_path_list_to_rowechelon_paths(
         else:
             ll.append((shape[0], cur[1]))
 
-        if not pivots:
-            continue
+        corners = (
+            f"let \\p1 = ({name}.north west), "
+            f"\\p2 = ({name}.south east), "
+        )
 
-        coord_defs: List[str] = []
-        for idx, (pi, pj) in enumerate(pivots):
-            coord_defs.append(f"{_corner_expr(pi, pj, 'north west')} coordinate (p{idx}tl)")
-            coord_defs.append(f"{_corner_expr(pi, pj, 'south west')} coordinate (p{idx}bl)")
-        coord_defs.append(f"({name}.south east) coordinate (pright)")
-        pre = r"\path " + " ".join(coord_defs) + "; "
-
-        pts: List[str] = []
-        if case in ("vv", "vh"):
-            pts.append("(p0tl)")
-            pts.append("(p0bl)")
+        if (case == "vv") or (case == "vh"):
+            p3 = f"\\p3 = ({ll[1][0] + tlr + 1}-|{ll[1][1] + tlc + 1}), "
         else:
-            pts.append("(p0bl)")
+            p3 = f"\\p3 = ({ll[0][0] + tlr + 1}-|{ll[0][1] + tlc + 1}), "
 
-        for k in range(len(pivots) - 1):
-            if pivots[k][1] != pivots[k + 1][1]:
-                pts.append(f"(p{k}bl -| p{k + 1}tl)")
-            if pivots[k][0] != pivots[k + 1][0]:
-                pts.append(f"(p{k + 1}bl)")
-
-        last_idx = len(pivots) - 1
-        if case in ("vh", "hh"):
-            pts.append(f"(p{last_idx}bl -| pright)")
+        if (case == "vh") or (case == "hh"):
+            i, j = ll[-2]
+            p4 = f"\\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
         else:
-            pts.append(f"(pright |- p{last_idx}bl)")
+            i, j = ll[-1]
+            p4 = f"\\p4 = ({i + tlr + 1}-|{j + tlc + 1}) in "
 
-        cmd = pre + rf"\draw[{color}] " + " -- ".join(pts) + ";"
+        cmd = "\\tikz \\draw[" + color + "] " + corners + p3 + p4 + " -- ".join([coords(*p) for p in ll]) + ";"
         out.append(cmd)
     return out
 
@@ -352,6 +361,88 @@ def _legacy_pivot_list_to_pivot_locs(
             coord = _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i), j=int(j), index_base=index_base)
             out.append((f"{coord}{coord}", pivot_style))
     return out
+
+
+def _pivot_list_to_decorators(
+    pivot_list: Sequence[Any],
+    *,
+    pivot_text_color: str = "red",
+) -> List[Dict[str, Any]]:
+    decorators: List[Dict[str, Any]] = []
+    dec = make_decorator(boxed=True, bf=True, text_color=pivot_text_color)
+    for spec in pivot_list:
+        if not spec or len(spec) < 2:
+            continue
+        grid_pos, pivots = spec[0], spec[1]
+        if not isinstance(grid_pos, (list, tuple)) or len(grid_pos) != 2:
+            continue
+        gM, gN = int(grid_pos[0]), int(grid_pos[1])
+        if not isinstance(pivots, (list, tuple)):
+            continue
+        decorators.append({"grid": (gM, gN), "entries": list(pivots), "decorator": dec})
+    return decorators
+
+
+def _legacy_bg_list_to_codebefore(
+    matrices: Sequence[Sequence[Any]],
+    bg_list: Sequence[Any],
+) -> List[str]:
+    codebefore: List[str] = []
+
+    def _emit_spec(spec: Sequence[Any]) -> None:
+        if not spec or len(spec) < 4:
+            return
+        gM, gN = int(spec[0]), int(spec[1])
+        entries = spec[2]
+        color = spec[3]
+        pt = spec[4] if len(spec) > 4 else 0
+        if not isinstance(entries, (list, tuple)):
+            entries = [entries]
+        for entry in entries:
+            cmd_1 = rf"\tikz \node [fill={color}, inner sep = {pt}pt, fit = "
+            if isinstance(entry, (list, tuple)) and len(entry) == 2 and all(isinstance(x, (list, tuple)) for x in entry):
+                (i0, j0), (i1, j1) = entry
+                c0 = _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i0), j=int(j0), index_base=1)
+                c1 = _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i1), j=int(j1), index_base=1)
+                cmd_2 = f"({c0[1:-1]}-medium) ({c1[1:-1]}-medium)"
+            else:
+                i0, j0 = entry
+                c0 = _grid_cell_coord(matrices, gM=gM, gN=gN, i=int(i0), j=int(j0), index_base=1)
+                cmd_2 = f"({c0[1:-1]}-medium)"
+            codebefore.append(cmd_1 + cmd_2 + " ] {} ;")
+
+    for spec in bg_list:
+        if isinstance(spec, list) and spec and all(isinstance(elem, list) for elem in spec):
+            for s in spec:
+                _emit_spec(s)
+        else:
+            _emit_spec(spec)
+    return codebefore
+
+
+def _variable_summary_txt_with_locs(
+    matrices: Sequence[Sequence[Any]],
+    variable_summary: Sequence[Any],
+    variable_colors: Sequence[str],
+) -> List[Tuple[str, str, str]]:
+    txt_with_locs: List[Tuple[str, str, str]] = []
+    _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
+    if not (block_widths and col_starts and row_starts):
+        return txt_with_locs
+    last_col_start = col_starts[-1]
+    last_col_width = block_widths[-1]
+    last_row = row_starts[-1] + max(_grid_offsets(matrices, index_base=1)[0][-1] - 1, 0)
+    arrow_shift = -1.6
+    label_shift = -2.4
+    for j, basic in enumerate(variable_summary):
+        if j >= last_col_width:
+            break
+        col = last_col_start + j
+        arrow = r"\Uparrow" if basic is True else r"\uparrow"
+        color = variable_colors[0] if basic is True else variable_colors[1]
+        txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{{arrow}}}$", f"yshift={arrow_shift}em"))
+        txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{x_{{{j+1}}}}}$", f"yshift={label_shift}em"))
+    return txt_with_locs
 
 
 def _build_typed_layout_spec(
@@ -384,6 +475,18 @@ def _build_typed_layout_spec(
     )
 
 
+def _merge_extension(extension: str, row_stretch: Optional[float]) -> str:
+    if row_stretch is None:
+        return extension
+    cmd = rf"\renewcommand{{\arraystretch}}{{{row_stretch}}}"
+    ext = extension or ""
+    if cmd in ext:
+        return ext
+    if ext and not ext.endswith("\n"):
+        ext += "\n"
+    return ext + cmd + "\n"
+
+
 def _build_ge_bundle(
     ref_A: Any,
     ref_rhs: Any = None,
@@ -393,11 +496,13 @@ def _build_ge_bundle(
     # no pivoting unless explicitly requested.
     pivoting: str = "none",
     gj: bool = False,
-    show_pivots: Optional[bool] = False,
+    show_pivots: Optional[bool] = True,
     index_base: int = 1,
     pivot_style: str = "",
-    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    pivot_text_color: str = "red",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -406,6 +511,8 @@ def _build_ge_bundle(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     # Julia interop typically passes the RHS as a keyword named `rhs`.
@@ -415,17 +522,17 @@ def _build_ge_bundle(
     if ref_rhs is None:
         ref_rhs = rhs
 
+    extension = _merge_extension(extension, row_stretch)
+
     tr: GETrace = ge_trace(ref_A, ref_rhs, pivoting=pivoting, gj=gj)  # type: ignore[arg-type]
 
     # Decorations are produced in *coefficient-matrix* coordinates.
     # We rebase pivot boxes to the final (last-layer) A-block in the GE grid.
     # Backwards-compatible pivot toggle:
     # - tests and legacy notebooks pass show_pivots=True/False.
-    # - if show_pivots is True and no explicit pivot_style is given, use a visible default.
+    # - pivot_style controls explicit TikZ pivot boxes; otherwise we use entry decorators.
     pivots_enabled = bool(show_pivots)
-    eff_pivot_style = pivot_style
-    if pivots_enabled and (not str(eff_pivot_style).strip()):
-        eff_pivot_style = "draw, thick, rounded corners"
+    eff_pivot_style = str(pivot_style or "").strip()
 
     decor = decorate_ge(tr, index_base=index_base, pivot_style=eff_pivot_style)
     layers = trace_to_layer_matrices(tr, augmented=True)
@@ -457,10 +564,12 @@ def _build_ge_bundle(
         cc = int(c) + Ew + int(index_base)
         return f"({rr}-{cc})"
 
-    pivot_locs = [
-        (f"{_cell_global(r, c)}{_cell_global(r, c)}", str(eff_pivot_style).strip())
-        for (r, c) in pivot_positions
-    ]
+    pivot_locs: List[Tuple[str, str]] = []
+    if pivots_enabled and str(eff_pivot_style).strip():
+        pivot_locs = [
+            (f"{_cell_global(r, c)}{_cell_global(r, c)}", str(eff_pivot_style).strip())
+            for (r, c) in pivot_positions
+        ]
 
     extra_callouts: List[Dict[str, Any]] = []
     if array_names is not None:
@@ -474,12 +583,59 @@ def _build_ge_bundle(
         if not explicit_names:
             rhs_list = _coerce_rhs_labels(rhs_list, tr.Nrhs)
         name_specs = _legacy_array_name_specs(len(layers["matrices"]), str(lhs), rhs_list, start_index=index_base)
-        extra_callouts = _legacy_name_specs_to_callouts(layers["matrices"], name_specs, color="blue")
+        extra_callouts = _legacy_name_specs_to_callouts(
+            layers["matrices"],
+            name_specs,
+            color="blue",
+            legacy_submatrix_names=False,
+        )
 
-    if callouts is None:
-        callouts = extra_callouts or None
+    if callouts is None or callouts is True:
+        if extra_callouts:
+            for item in extra_callouts:
+                if "name" not in item and "grid_pos" in item:
+                    item.pop("grid_pos", None)
+            callouts = extra_callouts
+        else:
+            callouts = callouts
     elif isinstance(callouts, list) and extra_callouts:
         callouts = list(callouts) + extra_callouts
+
+    bg_list = decor.get("bg_list") or []
+    codebefore: List[str] = _legacy_bg_list_to_codebefore(layers["matrices"], bg_list) if bg_list else []
+
+    ref_path_list = decor.get("ref_path_list") or []
+    rowechelon_paths = (
+        _legacy_ref_path_list_to_rowechelon_paths(
+            layers["matrices"],
+            ref_path_list,
+            legacy_submatrix_names=False,
+        )
+        if ref_path_list
+        else decor.get("rowechelon_paths") or []
+    )
+
+    pivot_decorators: List[Dict[str, Any]] = []
+    if pivots_enabled and decor.get("pivot_list"):
+        pivot_decorators = _pivot_list_to_decorators(
+            decor.get("pivot_list") or [],
+            pivot_text_color=pivot_text_color,
+        )
+
+    if pivot_decorators:
+        if decorators is None:
+            decorators = pivot_decorators
+        else:
+            decorators = list(decorators) + pivot_decorators
+
+    txt_with_locs = list(decor.get("txt_with_locs") or [])
+    eff_variable_summary = variable_summary
+    if eff_variable_summary is None:
+        eff_variable_summary = decor.get("variable_types") or decor.get("variable_summary")
+    if eff_variable_summary:
+        txt_with_locs.extend(
+            _variable_summary_txt_with_locs(layers["matrices"], eff_variable_summary, variable_colors)
+        )
 
     spec: Dict[str, Any] = dict(
         matrices=layers["matrices"],
@@ -488,8 +644,8 @@ def _build_ge_bundle(
         extension=extension,
         nice_options=nice_options,
         pivot_locs=pivot_locs,
-        txt_with_locs=decor.get("txt_with_locs"),
-        rowechelon_paths=decor.get("rowechelon_paths"),
+        txt_with_locs=txt_with_locs,
+        rowechelon_paths=rowechelon_paths,
         callouts=callouts,
         decorators=decorators,
         fig_scale=fig_scale,
@@ -497,12 +653,15 @@ def _build_ge_bundle(
         outer_hspace_mm=int(outer_hspace_mm),
         cell_align=str(cell_align),
         strict=bool(strict) if strict is not None else False,
+        codebefore=codebefore,
+        create_cell_nodes=True if rowechelon_paths else None,
+        create_medium_nodes=True if codebefore else None,
     )
 
     typed_layout = _build_typed_layout_spec(
         pivot_locs=pivot_locs,
-        txt_with_locs=decor.get("txt_with_locs"),
-        rowechelon_paths=decor.get("rowechelon_paths"),
+        txt_with_locs=txt_with_locs,
+        rowechelon_paths=rowechelon_paths,
         callouts=callouts,
         nice_options=nice_options,
         preamble=preamble,
@@ -527,11 +686,13 @@ def ge_tbl_spec(
     rhs: Any = None,
     pivoting: str = "none",
     gj: bool = False,
-    show_pivots: Optional[bool] = False,
+    show_pivots: Optional[bool] = True,
     index_base: int = 1,
     pivot_style: str = "",
-    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    pivot_text_color: str = "red",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -540,6 +701,8 @@ def ge_tbl_spec(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec for :func:`matrixlayout.ge.ge_grid_tex`.
@@ -558,6 +721,7 @@ def ge_tbl_spec(
         pivot_style=pivot_style,
         preamble=preamble,
         extension=extension,
+        row_stretch=row_stretch,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
@@ -566,6 +730,8 @@ def ge_tbl_spec(
         array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
+        variable_summary=variable_summary,
+        variable_colors=variable_colors,
         strict=bool(strict) if strict is not None else False,
     )["spec"]
 
@@ -577,11 +743,13 @@ def ge_tbl_layout_spec(
     rhs: Any = None,
     pivoting: str = "none",
     gj: bool = False,
-    show_pivots: Optional[bool] = False,
+    show_pivots: Optional[bool] = True,
     index_base: int = 1,
     pivot_style: str = "",
-    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    pivot_text_color: str = "red",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -590,6 +758,8 @@ def ge_tbl_layout_spec(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a layout spec using :class:`matrixlayout.specs.GELayoutSpec`."""
@@ -605,6 +775,7 @@ def ge_tbl_layout_spec(
         pivot_style=pivot_style,
         preamble=preamble,
         extension=extension,
+        row_stretch=row_stretch,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
@@ -613,6 +784,8 @@ def ge_tbl_layout_spec(
         array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
+        variable_summary=variable_summary,
+        variable_colors=variable_colors,
         strict=bool(strict) if strict is not None else False,
     )
 
@@ -623,6 +796,9 @@ def ge_tbl_layout_spec(
         "outer_hspace_mm": int(outer_hspace_mm),
         "cell_align": str(cell_align),
         "strict": bool(strict) if strict is not None else False,
+        "codebefore": bundle["spec"].get("codebefore"),
+        "create_cell_nodes": bundle["spec"].get("create_cell_nodes"),
+        "create_medium_nodes": bundle["spec"].get("create_medium_nodes"),
     }
 
 
@@ -633,7 +809,7 @@ def ge(
     formatter: Any = latexify,
     pivot_list: Optional[Sequence[Any]] = None,
     bg_for_entries: Optional[Any] = None,
-    variable_colors: Sequence[str] = ("red", "blue"),
+    variable_colors: Sequence[str] = ("red", "black"),
     pivot_text_color: str = "red",
     ref_path_list: Optional[Any] = None,
     comment_list: Optional[Any] = None,
@@ -756,7 +932,9 @@ def ge(
     rowechelon_paths: List[str] = []
     if ref_path_list:
         specs = ref_path_list if isinstance(ref_path_list, list) else [ref_path_list]
-        rowechelon_paths.extend(_legacy_ref_path_list_to_rowechelon_paths(matrices, specs))
+        rowechelon_paths.extend(
+            _legacy_ref_path_list_to_rowechelon_paths(matrices, specs, legacy_submatrix_names=True)
+        )
 
     callouts: List[Dict[str, Any]] = []
     if array_names is not None:
@@ -804,7 +982,9 @@ def ge(
 
             def nm_add_rowechelon_path(self, gM, gN, pivots, case="hh", color="blue,line width=0.4mm", adj=0.1):
                 specs = [(gM, gN, pivots, case, color, adj)]
-                self.rowechelon_paths.extend(_legacy_ref_path_list_to_rowechelon_paths(matrices, specs))
+                self.rowechelon_paths.extend(
+                    _legacy_ref_path_list_to_rowechelon_paths(matrices, specs, legacy_submatrix_names=True)
+                )
 
             def nm_text(self, txt_list, color="violet"):
                 if not txt_list:
@@ -859,11 +1039,13 @@ def ge_tbl_bundle(
     rhs: Any = None,
     pivoting: str = "none",
     gj: bool = False,
-    show_pivots: Optional[bool] = False,
+    show_pivots: Optional[bool] = True,
     index_base: int = 1,
     pivot_style: str = "",
-    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    pivot_text_color: str = "red",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -872,6 +1054,8 @@ def ge_tbl_bundle(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Return a bundle containing the trace, decorations, spec, and TeX."""
@@ -887,6 +1071,7 @@ def ge_tbl_bundle(
         pivot_style=pivot_style,
         preamble=preamble,
         extension=extension,
+        row_stretch=row_stretch,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
@@ -895,6 +1080,8 @@ def ge_tbl_bundle(
         array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
+        variable_summary=variable_summary,
+        variable_colors=variable_colors,
         strict=bool(strict) if strict is not None else False,
     )
 
@@ -933,11 +1120,13 @@ def ge_tbl_tex(
     rhs: Any = None,
     pivoting: str = "none",
     gj: bool = False,
-    show_pivots: Optional[bool] = False,
+    show_pivots: Optional[bool] = True,
     index_base: int = 1,
     pivot_style: str = "",
-    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
+    pivot_text_color: str = "red",
+    preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -946,6 +1135,8 @@ def ge_tbl_tex(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> str:
     """Compute a GE-table TeX document (no rendering)."""
@@ -961,6 +1152,7 @@ def ge_tbl_tex(
         pivot_style=pivot_style,
         preamble=preamble,
         extension=extension,
+        row_stretch=row_stretch,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
@@ -969,6 +1161,8 @@ def ge_tbl_tex(
         array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
+        variable_summary=variable_summary,
+        variable_colors=variable_colors,
         strict=bool(strict) if strict is not None else False,
     )["tex"]
 
@@ -985,6 +1179,7 @@ def ge_tbl_svg(
     pivot_style: str = "",
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
     extension: str = "",
+    row_stretch: Optional[float] = None,
     nice_options: str = "vlines-in-sub-matrix = I",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
@@ -997,6 +1192,8 @@ def ge_tbl_svg(
     array_names: Optional[Any] = None,
     decorators: Optional[Sequence[Any]] = None,
     fig_scale: Optional[Any] = None,
+    variable_summary: Optional[Any] = None,
+    variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> str:
     """Render a GE-table to SVG via matrixlayout (strict rendering boundary)."""
@@ -1012,6 +1209,7 @@ def ge_tbl_svg(
         pivot_style=pivot_style,
         preamble=preamble,
         extension=extension,
+        row_stretch=row_stretch,
         nice_options=nice_options,
         outer_delims=outer_delims,
         outer_hspace_mm=outer_hspace_mm,
@@ -1020,6 +1218,8 @@ def ge_tbl_svg(
         array_names=array_names,
         decorators=decorators,
         fig_scale=fig_scale,
+        variable_summary=variable_summary,
+        variable_colors=variable_colors,
         strict=bool(strict) if strict is not None else False,
     )
 

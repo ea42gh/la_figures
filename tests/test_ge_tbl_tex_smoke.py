@@ -24,8 +24,8 @@ def test_ge_tbl_tex_smoke():
     tex = ge_tbl_tex(A, show_pivots=True)
     assert "\\begin{NiceArray}" in tex
     assert r"\SubMatrix({1-3}{2-4})[name=A0]" in tex
-    # pivot boxes are emitted in CodeAfter
-    assert "fit=" in tex
+    # pivot boxes are emitted as entry decorators in the body
+    assert r"\boxed{" in tex
 
 
 def test_ge_tbl_tex_auto_callouts_smoke():
