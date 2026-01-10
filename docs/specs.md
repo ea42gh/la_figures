@@ -16,18 +16,36 @@ Grid positions are addressed by (row, column) in the outer list.
 | `rhs` | matrix | None | RHS to eliminate. |
 | `pivoting` | str | "none" | "none", "partial", or "full". |
 | `gj` | bool | False | Use Gauss-Jordan. |
-| `show_pivots` | bool | False | Emit pivot boxes. |
+| `show_pivots` | bool | True | Emit pivot boxes (entry decorators). |
 | `index_base` | int | 1 | Index base for labels. |
-| `pivot_style` | str | "" | TikZ style for pivot boxes. |
+| `pivot_style` | str | "" | Use CodeAfter fit boxes when set. |
+| `pivot_text_color` | str | "red" | Pivot entry text color. |
 | `preamble` | str | nicematrix opts | Body preamble. |
 | `extension` | str | "" | LaTeX preamble injection. |
+| `row_stretch` | float | None | Row spacing multiplier. |
 | `nice_options` | str | "vlines-in-sub-matrix = I" | NiceArray options. |
 | `callouts` | list/bool | None | Matrix labels/callouts. |
+| `array_names` | list/bool | None | Matrix name labels. |
 | `decorators` | list | None | Entry decorators. |
 | `fig_scale` | float | None | Figure scale. |
+| `outer_hspace_mm` | int | 6 | Horizontal block spacing (mm). |
+| `cell_align` | str | "r" | Cell alignment in TeX. |
+| `variable_summary` | list | None | Override pivot/free indicator row. |
+| `variable_colors` | tuple | ("red","black") | Colors for pivot/free indicators. |
 | `strict` | bool | None | Error on invalid decorators. |
 
 When `strict=True`, invalid decorator selectors raise errors instead of being ignored.
+
+Pivot rendering:
+
+- Default (`pivot_style=""`): boxed entry decorators in the matrix body.
+- Explicit `pivot_style`: CodeAfter `fit` boxes using the provided TikZ style.
+
+Defaults (selected):
+
+- `ge_tbl_spec`: `pivoting="none"`, `gj=False`, `show_pivots=True`
+- `qr_tbl_spec`: `array_names=True`
+- `eig_tbl_spec`: `normal=False`
 
 GE convenience wrappers render TeX to SVG via matrixlayout. Shared renderer
 parameters: `toolchain_name`, `crop`, `padding`, `output_dir`, `output_stem`,

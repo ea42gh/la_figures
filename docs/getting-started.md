@@ -5,7 +5,7 @@ ready for matrixlayout rendering.
 
 Common defaults:
 
-- `ge_tbl_spec`: `pivoting="none"`, `gj=False`, `show_pivots=False`.
+- `ge_tbl_spec`: `pivoting="none"`, `gj=False`, `show_pivots=True`.
 - `qr_tbl_spec`: `array_names=True`.
 - `eig_tbl_spec`: `normal=False`.
 
