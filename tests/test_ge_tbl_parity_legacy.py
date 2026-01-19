@@ -40,14 +40,14 @@ def _submatrix_spans(tex: str):
 
 def test_ge_submatrix_names_match_legacy_no_rhs():
     import la_figures
-    from matrixlayout.ge import ge_grid_tex
+    from matrixlayout.ge import grid_tex
 
     A = sym.Matrix([[1, 2], [3, 4]])
     tr = la_figures.ge_trace(A, pivoting="none")
     layers = la_figures.trace_to_layer_matrices(tr, augmented=True)["matrices"]
 
     legacy = _legacy_ge_tex(layers, Nrhs=0)
-    new = ge_grid_tex(matrices=layers, Nrhs=0)
+    new = grid_tex(matrices=layers, Nrhs=0)
 
     legacy_names = _submatrix_names(legacy)
     new_names = _submatrix_names(new)
@@ -60,7 +60,7 @@ def test_ge_submatrix_names_match_legacy_no_rhs():
 
 def test_ge_submatrix_names_match_legacy_with_rhs():
     import la_figures
-    from matrixlayout.ge import ge_grid_tex
+    from matrixlayout.ge import grid_tex
 
     A = sym.Matrix([[1, 2], [3, 4]])
     rhs = sym.Matrix([[5], [6]])
@@ -68,7 +68,7 @@ def test_ge_submatrix_names_match_legacy_with_rhs():
     layers = la_figures.trace_to_layer_matrices(tr, augmented=True)["matrices"]
 
     legacy = _legacy_ge_tex(layers, Nrhs=1)
-    new = ge_grid_tex(matrices=layers, Nrhs=1)
+    new = grid_tex(matrices=layers, Nrhs=1)
 
     legacy_names = _submatrix_names(legacy)
     new_names = _submatrix_names(new)

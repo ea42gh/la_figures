@@ -1,10 +1,10 @@
-"""Back-substitution trace + solution builders.
+"""Back-substitution helpers for system, cascade, and solution blocks.
 
 This module owns the *algorithmic* portion of the BACKSUBST migration.
 
 It provides:
-  - A trace generator compatible with :func:`matrixlayout.mk_shortcascade_lines`.
-  - Convenience helpers to build TeX for the optional system and solution blocks.
+  - A cascade block generator compatible with :func:`matrixlayout.mk_shortcascade_lines`.
+  - Convenience helpers to build TeX for the system and solution blocks.
 
 The implementation is intentionally close to the legacy
 ``itikz.nicematrix.BacksubstitutionCascade`` so that characterization tests can
@@ -16,6 +16,8 @@ from __future__ import annotations
 from typing import Any, Dict, List, Optional, Sequence, Tuple
 
 import sympy as sym
+
+from matrixlayout.shortcascade import mk_shortcascade_lines
 
 from .formatting import latexify
 
@@ -56,7 +58,7 @@ def _bs_rhs(
     return f"{latexify(factor)} \\left( {latexify(t)} \\right)"
 
 
-def backsub_trace_from_ref(
+def _backsub_trace_from_ref(
     ref_A: Any,
     ref_rhs: Any = None,
     *,
@@ -135,7 +137,25 @@ def backsub_trace_from_ref(
     }
 
 
-def backsub_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
+def backsubstitution_tex(
+    ref_A: Any,
+    ref_rhs: Any = None,
+    *,
+    var_name: str = "x",
+    param_name: str = r"\alpha",
+) -> list[str]:
+    """Return a TeX ``cascade`` block (as ``\\ShortCascade`` lines)."""
+
+    trace = _backsub_trace_from_ref(
+        ref_A,
+        ref_rhs,
+        var_name=var_name,
+        param_name=param_name,
+    )
+    return mk_shortcascade_lines(trace)
+
+
+def linear_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
     """Return a TeX ``systeme`` representation of ``A x = b``.
 
     This is a presentation helper, but it is convenient to keep it colocated
@@ -181,7 +201,7 @@ def backsub_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
     return r"\sysdelim.\}\systeme[" + vars_sorted + "]{ " + ",".join(eqs) + "}"
 
 
-def backsub_solution_tex(
+def standard_solution_tex(
     ref_A: Any,
     ref_rhs: Any,
     *,

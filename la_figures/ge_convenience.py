@@ -5,7 +5,7 @@ This module is intentionally thin: it ties together
 - :func:`la_figures.ge.ge_trace` (algorithmic trace)
 - :func:`la_figures.ge.decorate_ge` (data-only decorations)
 - :func:`la_figures.ge.trace_to_layer_matrices` (matrix stack)
-- :func:`matrixlayout.ge.ge_grid_tex` / :func:`matrixlayout.ge.ge_grid_svg` (layout/render)
+- :func:`matrixlayout.ge.grid_tex` / :func:`matrixlayout.ge.grid_svg` (layout/render)
 
 The TeX helpers do **not** call any toolchains.
 SVG helpers call the strict rendering boundary in :mod:`matrixlayout`.
@@ -189,9 +189,9 @@ def _legacy_name_specs_to_callouts(
     color: str = "blue",
     legacy_submatrix_names: bool = True,
 ) -> List[Dict[str, Any]]:
-    from matrixlayout.ge import ge_grid_submatrix_spans
+    from matrixlayout.ge import grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
+    spans = grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
     name_map = {(s.block_row, s.block_col): s.name for s in spans}
 
     def _strip_math(s: str) -> Tuple[str, bool]:
@@ -239,9 +239,9 @@ def _legacy_ref_path_list_to_rowechelon_paths(
     legacy_submatrix_names: bool = True,
 ) -> List[str]:
     out: List[str] = []
-    from matrixlayout.ge import ge_grid_submatrix_spans
+    from matrixlayout.ge import grid_submatrix_spans
 
-    spans = ge_grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
+    spans = grid_submatrix_spans(matrices, legacy_submatrix_names=legacy_submatrix_names)
     span_map = {(s.block_row, s.block_col): s for s in spans}
     for spec in ref_path_list:
         if not isinstance(spec, (list, tuple)) or len(spec) < 3:
@@ -420,29 +420,36 @@ def _legacy_bg_list_to_codebefore(
     return codebefore
 
 
-def _variable_summary_txt_with_locs(
+def _variable_summary_label_rows(
     matrices: Sequence[Sequence[Any]],
     variable_summary: Sequence[Any],
     variable_colors: Sequence[str],
-) -> List[Tuple[str, str, str]]:
-    txt_with_locs: List[Tuple[str, str, str]] = []
-    _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
-    if not (block_widths and col_starts and row_starts):
-        return txt_with_locs
-    last_col_start = col_starts[-1]
+) -> List[Dict[str, Any]]:
+    _, block_widths, row_starts, _ = _grid_offsets(matrices, index_base=1)
+    if not (block_widths and row_starts):
+        return []
+    n_block_rows = len(matrices or [])
+    n_block_cols = max((len(r) for r in (matrices or [])), default=0)
+    if n_block_rows == 0 or n_block_cols == 0:
+        return []
     last_col_width = block_widths[-1]
-    last_row = row_starts[-1] + max(_grid_offsets(matrices, index_base=1)[0][-1] - 1, 0)
-    arrow_shift = -1.6
-    label_shift = -2.4
+    arrows: List[str] = []
+    labels: List[str] = []
     for j, basic in enumerate(variable_summary):
         if j >= last_col_width:
             break
-        col = last_col_start + j
         arrow = r"\Uparrow" if basic is True else r"\uparrow"
         color = variable_colors[0] if basic is True else variable_colors[1]
-        txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{{arrow}}}$", f"yshift={arrow_shift}em"))
-        txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{x_{{{j+1}}}}}$", f"yshift={label_shift}em"))
-    return txt_with_locs
+        arrows.append(rf"$\textcolor{{{color}}}{{{arrow}}}$")
+        labels.append(rf"$\textcolor{{{color}}}{{x_{{{j+1}}}}}$")
+    if not arrows:
+        return []
+    return [
+        {
+            "grid": (n_block_rows - 1, n_block_cols - 1),
+            "rows": [arrows, labels],
+        }
+    ]
 
 
 def _build_typed_layout_spec(
@@ -629,12 +636,15 @@ def _build_ge_bundle(
             decorators = list(decorators) + pivot_decorators
 
     txt_with_locs = list(decor.get("txt_with_locs") or [])
+    variable_labels: Optional[List[Dict[str, Any]]] = None
     eff_variable_summary = variable_summary
     if eff_variable_summary is None:
         eff_variable_summary = decor.get("variable_types") or decor.get("variable_summary")
     if eff_variable_summary:
-        txt_with_locs.extend(
-            _variable_summary_txt_with_locs(layers["matrices"], eff_variable_summary, variable_colors)
+        variable_labels = _variable_summary_label_rows(
+            layers["matrices"],
+            eff_variable_summary,
+            variable_colors,
         )
 
     spec: Dict[str, Any] = dict(
@@ -645,6 +655,7 @@ def _build_ge_bundle(
         nice_options=nice_options,
         pivot_locs=pivot_locs,
         txt_with_locs=txt_with_locs,
+        variable_labels=variable_labels,
         rowechelon_paths=rowechelon_paths,
         callouts=callouts,
         decorators=decorators,
@@ -705,7 +716,7 @@ def ge_tbl_spec(
     variable_colors: Sequence[str] = ("red", "black"),
     strict: Optional[bool] = None,
 ) -> Dict[str, Any]:
-    """Return a layout spec for :func:`matrixlayout.ge.ge_grid_tex`.
+    """Return a layout spec for :func:`matrixlayout.ge.grid_tex`.
 
     The returned dict contains only primitives + nested lists.
     """
@@ -799,6 +810,7 @@ def ge_tbl_layout_spec(
         "codebefore": bundle["spec"].get("codebefore"),
         "create_cell_nodes": bundle["spec"].get("create_cell_nodes"),
         "create_medium_nodes": bundle["spec"].get("create_medium_nodes"),
+        "variable_labels": bundle["spec"].get("variable_labels"),
     }
 
 
@@ -897,6 +909,7 @@ def ge(
                 )
 
     txt_with_locs: List[Tuple[str, str, str]] = []
+    variable_labels: Optional[List[Dict[str, Any]]] = None
     if comment_list:
         _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
         if block_widths and col_starts:
@@ -914,20 +927,7 @@ def ge(
                 txt_with_locs.append((coord, r"\qquad " + str(txt), style))
 
     if variable_summary:
-        _, block_widths, row_starts, col_starts = _grid_offsets(matrices, index_base=1)
-        if block_widths and col_starts and row_starts:
-            last_col_start = col_starts[-1]
-            last_col_width = block_widths[-1]
-            last_row = row_starts[-1] + max(_grid_offsets(matrices, index_base=1)[0][-1] - 1, 0)
-            base_yshift = -1.2
-            for j, basic in enumerate(variable_summary):
-                if j >= last_col_width:
-                    break
-                col = last_col_start + j
-                arrow = r"\Uparrow" if basic is True else r"\uparrow"
-                color = variable_colors[0] if basic is True else variable_colors[1]
-                txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{{arrow}}}$", f"yshift={base_yshift}em"))
-                txt_with_locs.append((f"({last_row}-{col})", rf"$\textcolor{{{color}}}{{x_{{{j+1}}}}}$", f"yshift={2*base_yshift}em"))
+        variable_labels = _variable_summary_label_rows(matrices, variable_summary, variable_colors)
 
     rowechelon_paths: List[str] = []
     if ref_path_list:
@@ -1006,9 +1006,9 @@ def ge(
 
         func(_LegacyFuncAdapter())
 
-    from matrixlayout.ge import ge_grid_svg
+    from matrixlayout.ge import grid_svg
 
-    return ge_grid_svg(
+    return grid_svg(
         matrices=matrices,
         Nrhs=Nrhs,
         formatter=formatter,
@@ -1018,6 +1018,7 @@ def ge(
         pivot_locs=pivot_locs,
         codebefore=codebefore,
         txt_with_locs=txt_with_locs,
+        variable_labels=variable_labels,
         rowechelon_paths=rowechelon_paths,
         callouts=callouts or None,
         create_extra_nodes=True if (ref_path_list or needs_medium_nodes) else None,
@@ -1090,9 +1091,9 @@ def ge_tbl_bundle(
     from dataclasses import asdict
 
     try:
-        from matrixlayout.ge import ge_grid_bundle
+        from matrixlayout.ge import grid_bundle
 
-        gb = ge_grid_bundle(**bundle["spec"])
+        gb = grid_bundle(**bundle["spec"])
         bundle["tex"] = gb.tex
         bundle["submatrix_spans"] = [
             {
@@ -1106,9 +1107,9 @@ def ge_tbl_bundle(
         ]
     except ImportError:
         # Fall back to plain TeX generation for older matrixlayout versions.
-        from matrixlayout.ge import ge_grid_tex
+        from matrixlayout.ge import grid_tex
 
-        tex = ge_grid_tex(**bundle["spec"])
+        tex = grid_tex(**bundle["spec"])
         bundle["tex"] = tex
     return bundle
 
@@ -1223,6 +1224,6 @@ def ge_tbl_svg(
         strict=bool(strict) if strict is not None else False,
     )
 
-    from matrixlayout.ge import ge_grid_svg
+    from matrixlayout.ge import grid_svg
 
-    return ge_grid_svg(toolchain_name=toolchain_name, crop=crop, padding=padding, frame=frame, **spec)
+    return grid_svg(toolchain_name=toolchain_name, crop=crop, padding=padding, frame=frame, **spec)

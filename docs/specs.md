@@ -51,7 +51,7 @@ GE convenience wrappers render TeX to SVG via matrixlayout. Shared renderer
 parameters: `toolchain_name`, `crop`, `padding`, `output_dir`, `output_stem`,
 `frame`.
 
-`ge_svg` parameters (subset shown):
+`svg` parameters (subset shown):
 
 | Parameter | Type | Default | Notes |
 | --- | --- | --- | --- |

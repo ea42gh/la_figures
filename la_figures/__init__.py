@@ -23,13 +23,13 @@ from .convenience import (
 from .qr import compute_qr_matrices, gram_schmidt_qr_matrices, qr_tbl_layout_spec, qr_tbl_spec
 from .convenience_qr import qr as qr_svg, qr_tbl_bundle as qr_tbl_bundle, qr_tbl_tex, qr_tbl_svg, gram_schmidt_qr
 from .backsub import (
-    backsub_trace_from_ref,
-    backsub_solution_tex,
-    backsub_system_tex,
+    backsubstitution_tex,
+    linear_system_tex,
+    standard_solution_tex,
 )
 from . import ge as ge
 from .ge import ge_trace, trace_to_layer_matrices
-from .convenience_ge import ge as ge_svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
+from .convenience_ge import ge as svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
 from .formatting import (
     decorate_tex_entries,
     latexify,
@@ -70,9 +70,9 @@ __all__ = [
     "qr_tbl_svg",
     "qr_tbl_bundle",
     "gram_schmidt_qr",
-    "backsub_trace_from_ref",
-    "backsub_solution_tex",
-    "backsub_system_tex",
+    "backsubstitution_tex",
+    "linear_system_tex",
+    "standard_solution_tex",
     "ge_trace",
     "trace_to_layer_matrices",
     "ge_tbl_spec",
@@ -81,7 +81,7 @@ __all__ = [
     "ge_tbl_svg",
     "ge_tbl_bundle",
     "ge",
-    "ge_svg",
+    "svg",
     "qr_svg",
     "latexify",
     "make_decorator",

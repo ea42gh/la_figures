@@ -41,8 +41,8 @@ def test_ge_legacy_wrapper_supports_backgrounds_and_comments():
         captured.update(kwargs)
         return "<svg/>"
 
-    ge_svg_orig = ml_ge.ge_grid_svg
-    ml_ge.ge_grid_svg = fake_svg
+    ge_svg_orig = ml_ge.grid_svg
+    ml_ge.grid_svg = fake_svg
     try:
         out = ge(
             matrices,
@@ -50,7 +50,7 @@ def test_ge_legacy_wrapper_supports_backgrounds_and_comments():
             comment_list=["note"],
         )
     finally:
-        ml_ge.ge_grid_svg = ge_svg_orig
+        ml_ge.grid_svg = ge_svg_orig
 
     assert out == "<svg/>"
     assert captured["codebefore"]
@@ -72,8 +72,8 @@ def test_ge_legacy_wrapper_supports_ref_path_list():
         captured.update(kwargs)
         return "<svg/>"
 
-    ge_svg_orig = ml_ge.ge_grid_svg
-    ml_ge.ge_grid_svg = fake_svg
+    ge_svg_orig = ml_ge.grid_svg
+    ml_ge.grid_svg = fake_svg
     try:
         out = ge(
             matrices,
@@ -81,7 +81,7 @@ def test_ge_legacy_wrapper_supports_ref_path_list():
             output_dir="tmp",
         )
     finally:
-        ml_ge.ge_grid_svg = ge_svg_orig
+        ml_ge.grid_svg = ge_svg_orig
 
     assert out == "<svg/>"
     assert captured["rowechelon_paths"]
@@ -100,18 +100,18 @@ def test_ge_legacy_wrapper_supports_variable_summary():
         captured.update(kwargs)
         return "<svg/>"
 
-    ge_svg_orig = ml_ge.ge_grid_svg
-    ml_ge.ge_grid_svg = fake_svg
+    ge_svg_orig = ml_ge.grid_svg
+    ml_ge.grid_svg = fake_svg
     try:
         out = ge(
             matrices,
             variable_summary=[True, False],
         )
     finally:
-        ml_ge.ge_grid_svg = ge_svg_orig
+        ml_ge.grid_svg = ge_svg_orig
 
     assert out == "<svg/>"
-    assert captured["txt_with_locs"]
+    assert captured["variable_labels"]
 
 
 def test_ge_legacy_wrapper_supports_array_names():
@@ -129,15 +129,15 @@ def test_ge_legacy_wrapper_supports_array_names():
         captured.update(kwargs)
         return "<svg/>"
 
-    ge_svg_orig = ml_ge.ge_grid_svg
-    ml_ge.ge_grid_svg = fake_svg
+    ge_svg_orig = ml_ge.grid_svg
+    ml_ge.grid_svg = fake_svg
     try:
         out = ge(
             matrices,
             array_names=["E", ["A", "b"]],
         )
     finally:
-        ml_ge.ge_grid_svg = ge_svg_orig
+        ml_ge.grid_svg = ge_svg_orig
 
     assert out == "<svg/>"
     assert captured["callouts"]
@@ -161,8 +161,8 @@ def test_ge_legacy_wrapper_rhs_callout_labels_follow_rhs_size():
         captured.update(kwargs)
         return "<svg/>"
 
-    ge_svg_orig = ml_ge.ge_grid_svg
-    ml_ge.ge_grid_svg = fake_svg
+    ge_svg_orig = ml_ge.grid_svg
+    ml_ge.grid_svg = fake_svg
     try:
         ge(matrices, array_names=True, Nrhs=1)
         labels = _extract_labels(captured.get("callouts"))
@@ -178,4 +178,4 @@ def test_ge_legacy_wrapper_rhs_callout_labels_follow_rhs_size():
         labels = _extract_labels(captured.get("callouts"))
         assert any(r"\mid  b" in label for label in labels)
     finally:
-        ml_ge.ge_grid_svg = ge_svg_orig
+        ml_ge.grid_svg = ge_svg_orig
