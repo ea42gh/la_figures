@@ -1,6 +1,6 @@
 # la-figures
 
-Linear algebra algorithms and descriptor objects for the itikz migration.
+Linear algebra algorithms and rendering.
 
 This package contains algorithmic traces/specs (e.g., eigen tables, GE traces)
 but does not render or invoke TeX toolchains.
