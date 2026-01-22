@@ -21,6 +21,7 @@ import la_figures
 
 A = sym.Matrix([[1, 2], [3, 4]])
 spec = la_figures.ge_tbl_spec(A)
+# spec["decorations"] includes RHS separators (if present) as vline specs.
 # spec["matrices"] holds the matrix grid
 # spec["specs"] holds label/callout specs
 ```

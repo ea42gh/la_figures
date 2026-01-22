@@ -510,7 +510,7 @@ def _build_ge_bundle(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
@@ -647,6 +647,21 @@ def _build_ge_bundle(
             variable_colors,
         )
 
+    decorations: List[Dict[str, Any]] = []
+    nrhs = int(tr.Nrhs or 0)
+    if nrhs > 0:
+        n_block_rows = len(layers["matrices"] or [])
+        n_block_cols = max((len(r) for r in (layers["matrices"] or [])), default=0)
+        last_col = n_block_cols - 1
+        for br in range(n_block_rows):
+            row = layers["matrices"][br] if br < n_block_rows else []
+            mat = row[last_col] if 0 <= last_col < len(row) else None
+            _, w = _matrix_shape(mat)
+            split = w - nrhs
+            if w <= 0 or split <= 0 or split >= w:
+                continue
+            decorations.append({"grid": (br, last_col), "vlines": split})
+
     spec: Dict[str, Any] = dict(
         matrices=layers["matrices"],
         Nrhs=int(tr.Nrhs or 0),
@@ -659,10 +674,12 @@ def _build_ge_bundle(
         rowechelon_paths=rowechelon_paths,
         callouts=callouts,
         decorators=decorators,
+        decorations=decorations or None,
         fig_scale=fig_scale,
         outer_delims=bool(outer_delims),
         outer_hspace_mm=int(outer_hspace_mm),
         cell_align=str(cell_align),
+        format_nrhs=False if decorations else True,
         strict=bool(strict) if strict is not None else False,
         codebefore=codebefore,
         create_cell_nodes=True if rowechelon_paths else None,
@@ -704,7 +721,7 @@ def ge_tbl_spec(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
@@ -761,7 +778,7 @@ def ge_tbl_layout_spec(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
@@ -811,6 +828,8 @@ def ge_tbl_layout_spec(
         "create_cell_nodes": bundle["spec"].get("create_cell_nodes"),
         "create_medium_nodes": bundle["spec"].get("create_medium_nodes"),
         "variable_labels": bundle["spec"].get("variable_labels"),
+        "decorations": bundle["spec"].get("decorations"),
+        "format_nrhs": bundle["spec"].get("format_nrhs"),
     }
 
 
@@ -1047,7 +1066,7 @@ def ge_tbl_bundle(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
@@ -1128,7 +1147,7 @@ def ge_tbl_tex(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 2pt, left-margin=6pt, right-margin=6pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",
@@ -1181,7 +1200,7 @@ def ge_tbl_svg(
     preamble: str = r" \NiceMatrixOptions{cell-space-limits = 1pt}" + "\n",
     extension: str = "",
     row_stretch: Optional[float] = None,
-    nice_options: str = "vlines-in-sub-matrix = I",
+    nice_options: str = "",
     outer_delims: bool = False,
     outer_hspace_mm: int = 6,
     cell_align: str = "r",

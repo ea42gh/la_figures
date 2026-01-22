@@ -23,10 +23,11 @@ Grid positions are addressed by (row, column) in the outer list.
 | `preamble` | str | nicematrix opts | Body preamble. |
 | `extension` | str | "" | LaTeX preamble injection. |
 | `row_stretch` | float | None | Row spacing multiplier. |
-| `nice_options` | str | "vlines-in-sub-matrix = I" | NiceArray options. |
+| `nice_options` | str | "" | NiceArray options. |
 | `callouts` | list/bool | None | Matrix labels/callouts. |
 | `array_names` | list/bool | None | Matrix name labels. |
 | `decorators` | list | None | Entry decorators. |
+| `format_nrhs` | bool | True | Use format-level RHS separators (disabled when line decorations are emitted). |
 | `fig_scale` | float | None | Figure scale. |
 | `outer_hspace_mm` | int | 6 | Horizontal block spacing (mm). |
 | `cell_align` | str | "r" | Cell alignment in TeX. |
@@ -67,6 +68,12 @@ parameters: `toolchain_name`, `crop`, `padding`, `output_dir`, `output_stem`,
 `ge_tbl_tex`, `ge_tbl_svg`, `ge_tbl_bundle` accept the same algorithmic
 parameters as `ge_tbl_spec` plus renderer options (for SVG).
 
+Note on RHS separators:
+
+`ge_tbl_spec` now emits RHS separator lines via `decorations` (per-block vlines)
+and disables format-level separators to keep label rows clean. The resulting
+vertical lines only appear in the matrix rows.
+
 ## QR
 
 `qr_tbl_spec` parameters:
@@ -97,6 +104,9 @@ parameters as `ge_tbl_spec` plus renderer options (for SVG).
 
 `qr_tbl_tex`, `qr_tbl_svg`, `qr_tbl_bundle` follow `qr_tbl_spec` plus renderer
 options (for SVG).
+
+QR callout labels are nudged vertically to align with their arrows. For 2x2
+inputs, the Q^T label uses a longer arrow to avoid overlapping the R label.
 
 ## Eigen/SVD
 
