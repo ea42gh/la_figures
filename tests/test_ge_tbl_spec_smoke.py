@@ -41,3 +41,37 @@ def test_ge_tbl_layout_spec_uses_typed_layout():
     assert isinstance(spec["layout"], GELayoutSpec)
     tex = grid_tex(**spec)
     assert "\\begin{NiceArray}" in tex
+
+
+def test_ge_tbl_spec_variable_summary_labels():
+    import la_figures
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    spec = la_figures.ge_tbl_spec(
+        A,
+        variable_summary=[True, False],
+        variable_colors=("blue", "orange"),
+    )
+
+    labels = spec.get("variable_labels") or []
+    assert labels
+    rows = labels[0]["rows"]
+    assert rows[0] == [
+        r"$\textcolor{blue}{\Uparrow}$",
+        r"$\textcolor{orange}{\uparrow}$",
+    ]
+    assert rows[1] == [
+        r"$\textcolor{blue}{x_{1}}$",
+        r"$\textcolor{orange}{x_{2}}$",
+    ]
+
+
+def test_ge_tbl_spec_rhs_vline():
+    import la_figures
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    spec = la_figures.ge_tbl_spec(A, rhs=[5, 6])
+
+    decorations = spec.get("decorations") or []
+    assert {"grid": (0, 1), "vlines": 2} in decorations
+    assert {"grid": (1, 1), "vlines": 2} in decorations
