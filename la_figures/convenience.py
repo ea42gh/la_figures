@@ -115,6 +115,8 @@ def eig_tbl_svg(
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
     frame: Any = None,
+    tmp_dir: Optional[Any] = None,
+    output_dir: Optional[Any] = None,
 ) -> str:
     """Compute an eigen-table SVG via :mod:`matrixlayout` and :mod:`jupyter_tikz`."""
 
@@ -147,6 +149,8 @@ def eig_tbl_svg(
         crop=norm_str(crop),
         padding=norm_padding(padding),
         frame=frame,
+        output_dir=output_dir,
+        tmp_dir=tmp_dir,
     )
 
 
@@ -245,6 +249,8 @@ def svd_tbl_svg(
     crop: Any = "tight",
     padding: Any = (2, 2, 2, 2),
     frame: Any = None,
+    tmp_dir: Optional[Any] = None,
+    output_dir: Optional[Any] = None,
 ) -> str:
     """Compute an SVD-table SVG via :mod:`matrixlayout` and :mod:`jupyter_tikz`."""
 
@@ -277,6 +283,8 @@ def svd_tbl_svg(
         crop=norm_str(crop),
         padding=norm_padding(padding),
         frame=frame,
+        output_dir=output_dir,
+        tmp_dir=tmp_dir,
     )
 
 
