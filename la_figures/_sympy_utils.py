@@ -127,6 +127,12 @@ def to_sympy_matrix(A: Any) -> Optional[sym.Matrix]:
     # (or to a NumPy array if available through the wrapper).
     jl_list = _juliacall_array_to_nested_list(A)
     if jl_list is not None:
+        if isinstance(jl_list, list) and jl_list:
+            first = jl_list[0]
+            if isinstance(first, (list, tuple)) and first and _is_rational_tuple(first[0]):
+                return _tuples_to_rationals_2d(jl_list)  # type: ignore[arg-type]
+            if _is_rational_tuple(first):
+                return _tuples_to_rationals_1d(jl_list)  # type: ignore[arg-type]
         return sym.Matrix(jl_list)
 
     # ---- Julia bridge convenience: rationals passed as integer tuples -----------------
