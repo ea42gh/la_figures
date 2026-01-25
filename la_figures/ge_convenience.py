@@ -1052,6 +1052,17 @@ def ge(
     )
 
 
+def show_ge(*args: Any, **kwargs: Any) -> Any:
+    """Render GE and return a displayable SVG object when possible."""
+    svg = ge(*args, **kwargs)
+    try:
+        from IPython.display import SVG  # type: ignore
+
+        return SVG(svg)
+    except Exception:
+        return svg
+
+
 def ge_tbl_bundle(
     ref_A: Any,
     ref_rhs: Any = None,
