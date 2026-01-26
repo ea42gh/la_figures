@@ -198,7 +198,7 @@ def linear_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
         eqs.append("".join(terms) + " = " + latexify(bb[i, 0]))
 
     vars_sorted = "".join(sorted(var))
-    return r"\sysdelim.\}\systeme[" + vars_sorted + "]{ " + ",".join(eqs) + "}"
+    return r"\systeme[" + vars_sorted + "]{ " + ",".join(eqs) + "}"
 
 
 def standard_solution_tex(
