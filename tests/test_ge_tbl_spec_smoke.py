@@ -75,3 +75,26 @@ def test_ge_tbl_spec_rhs_vline():
     decorations = spec.get("decorations") or []
     assert {"grid": (0, 1), "vlines": 2} in decorations
     assert {"grid": (1, 1), "vlines": 2} in decorations
+
+
+def test_ge_tbl_spec_layout_and_bundle_match_tex():
+    import pytest
+
+    pytest.importorskip("matrixlayout")
+    import la_figures
+    from la_figures.ge_convenience import ge_tbl_layout_spec
+    from matrixlayout.ge import grid_tex
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    rhs = sym.Matrix([[5], [6]])
+
+    spec = la_figures.ge_tbl_spec(A, ref_rhs=rhs, show_pivots=True)
+    layout_spec = ge_tbl_layout_spec(A, ref_rhs=rhs, show_pivots=True)
+    bundle = la_figures.ge_tbl_bundle(A, ref_rhs=rhs, show_pivots=True)
+
+    tex_spec = grid_tex(**spec)
+    tex_layout = grid_tex(**layout_spec)
+    tex_bundle = grid_tex(**bundle["spec"])
+
+    assert tex_spec == tex_layout
+    assert tex_spec == tex_bundle
