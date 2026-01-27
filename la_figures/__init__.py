@@ -27,10 +27,9 @@ from .backsub import (
     linear_system_tex,
     standard_solution_tex,
 )
-from . import ge as ge
 from .ge import ge_trace, trace_to_layer_matrices
 from .ge_convenience import show_ge
-from .convenience_ge import ge as svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
+from .convenience_ge import ge as ge, ge as svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
 from .formatting import (
     decorate_tex_entries,
     latexify,
