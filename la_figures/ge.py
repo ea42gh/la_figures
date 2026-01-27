@@ -725,7 +725,7 @@ def decorate_ge(
         "pivot_list": pivot_list,
         "bg_list": bg_list,
         "path_list": path_list,
-        "ref_path_list": path_list or ref_path_list,
+        "ref_path_list": ref_path_list or path_list,
         "variable_summary": variable_summary,
         # Retain trace metadata for downstream consumers.
         "pivot_positions": list(trace.pivot_positions),

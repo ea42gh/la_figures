@@ -98,3 +98,19 @@ def test_ge_tbl_spec_layout_and_bundle_match_tex():
 
     assert tex_spec == tex_layout
     assert tex_spec == tex_bundle
+
+
+def test_ge_tbl_spec_dict_roundtrip_grid_svg_accepts_spec():
+    import pytest
+
+    pytest.importorskip("matrixlayout")
+    import la_figures
+    from matrixlayout.ge import grid_svg
+
+    A = sym.Matrix([[1, 2], [3, 4]])
+    rhs = sym.Matrix([[5], [6]])
+
+    spec = la_figures.ge_tbl_spec(A, ref_rhs=rhs, show_pivots=True, array_names=True)
+    svg = grid_svg(spec=spec, toolchain_name="pdftex_dvisvgm", crop="tight", padding=(1, 1, 1, 1))
+    assert isinstance(svg, str)
+    assert "<svg" in svg
