@@ -30,6 +30,9 @@ from .backsub import (
 from .ge import ge_trace, trace_to_layer_matrices
 from .ge_convenience import show_ge
 from .convenience_ge import ge as ge, ge as svg, ge_tbl_bundle, ge_tbl_layout_spec, ge_tbl_spec, ge_tbl_tex, ge_tbl_svg
+from matrixlayout.ge import grid_svg, grid_tex
+from matrixlayout.qr import qr_grid_svg, qr_grid_tex
+from matrixlayout import eigproblem_svg, eigproblem_tex
 from .formatting import (
     decorate_tex_entries,
     latexify,
@@ -83,6 +86,12 @@ __all__ = [
     "ge_tbl_bundle",
     "ge",
     "svg",
+    "grid_svg",
+    "grid_tex",
+    "qr_grid_svg",
+    "qr_grid_tex",
+    "eigproblem_svg",
+    "eigproblem_tex",
     "qr_svg",
     "latexify",
     "make_decorator",
