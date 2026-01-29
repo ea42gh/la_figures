@@ -58,6 +58,7 @@ def make_decorator(**kwargs: Any) -> Callable[[str], str]:
 
 
 def decorator_box(*, color: Optional[str] = None) -> Callable[[str], str]:
+    """Return a decorator that draws a box (optionally colored) around TeX."""
     try:
         from matrixlayout.formatting import decorator_box as _decorator_box  # type: ignore
     except Exception:
@@ -70,6 +71,7 @@ def decorator_box(*, color: Optional[str] = None) -> Callable[[str], str]:
 
 
 def decorator_color(color: str) -> Callable[[str], str]:
+    """Return a decorator that colors TeX."""
     try:
         from matrixlayout.formatting import decorator_color as _decorator_color  # type: ignore
     except Exception:
@@ -80,6 +82,7 @@ def decorator_color(color: str) -> Callable[[str], str]:
 
 
 def decorator_bg(color: str) -> Callable[[str], str]:
+    """Return a decorator that adds a background color to TeX."""
     try:
         from matrixlayout.formatting import decorator_bg as _decorator_bg  # type: ignore
     except Exception:
@@ -90,6 +93,7 @@ def decorator_bg(color: str) -> Callable[[str], str]:
 
 
 def decorator_bf() -> Callable[[str], str]:
+    """Return a decorator that boldfaces TeX."""
     try:
         from matrixlayout.formatting import decorator_bf as _decorator_bf  # type: ignore
     except Exception:
@@ -100,6 +104,7 @@ def decorator_bf() -> Callable[[str], str]:
 
 
 def sel_entry(i: int, j: int) -> Any:
+    """Selector for a single matrix entry."""
     try:
         from matrixlayout.formatting import sel_entry as _sel_entry  # type: ignore
     except Exception:
@@ -110,6 +115,7 @@ def sel_entry(i: int, j: int) -> Any:
 
 
 def sel_box(top_left: Any, bottom_right: Any) -> Any:
+    """Selector for a rectangular entry region."""
     try:
         from matrixlayout.formatting import sel_box as _sel_box  # type: ignore
     except Exception:
@@ -120,6 +126,7 @@ def sel_box(top_left: Any, bottom_right: Any) -> Any:
 
 
 def sel_row(i: int) -> Any:
+    """Selector for an entire row."""
     try:
         from matrixlayout.formatting import sel_row as _sel_row  # type: ignore
     except Exception:
@@ -130,6 +137,7 @@ def sel_row(i: int) -> Any:
 
 
 def sel_col(j: int) -> Any:
+    """Selector for an entire column."""
     try:
         from matrixlayout.formatting import sel_col as _sel_col  # type: ignore
     except Exception:
@@ -140,6 +148,7 @@ def sel_col(j: int) -> Any:
 
 
 def sel_rows(rows: Any) -> Any:
+    """Selector for multiple rows."""
     try:
         from matrixlayout.formatting import sel_rows as _sel_rows  # type: ignore
     except Exception:
@@ -150,6 +159,7 @@ def sel_rows(rows: Any) -> Any:
 
 
 def sel_cols(cols: Any) -> Any:
+    """Selector for multiple columns."""
     try:
         from matrixlayout.formatting import sel_cols as _sel_cols  # type: ignore
     except Exception:
@@ -160,6 +170,7 @@ def sel_cols(cols: Any) -> Any:
 
 
 def sel_all() -> Any:
+    """Selector for all entries."""
     try:
         from matrixlayout.formatting import sel_all as _sel_all  # type: ignore
     except Exception:
@@ -170,6 +181,7 @@ def sel_all() -> Any:
 
 
 def sel_vec(group: int, vec: int, entry: int) -> Any:
+    """Selector for a vector entry in an eigenproblem row."""
     try:
         from matrixlayout.formatting import sel_vec as _sel_vec  # type: ignore
     except Exception:
@@ -180,6 +192,7 @@ def sel_vec(group: int, vec: int, entry: int) -> Any:
 
 
 def sel_vec_range(start: Any, end: Any) -> Any:
+    """Selector for a contiguous vector entry range."""
     try:
         from matrixlayout.formatting import sel_vec_range as _sel_vec_range  # type: ignore
     except Exception:
