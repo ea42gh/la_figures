@@ -535,8 +535,7 @@ def _build_ge_bundle(
 
     # Decorations are produced in *coefficient-matrix* coordinates.
     # We rebase pivot boxes to the final (last-layer) A-block in the GE grid.
-    # Backwards-compatible pivot toggle:
-    # - tests and notebooks pass show_pivots=True/False.
+    # Pivot toggle: tests and notebooks pass show_pivots=True/False.
     # - pivot_style controls explicit TikZ pivot boxes; otherwise we use entry decorators.
     pivots_enabled = bool(show_pivots)
     eff_pivot_style = str(pivot_style or "").strip()
