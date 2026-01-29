@@ -52,6 +52,15 @@ from .formatting import (
     sel_vec_range,
 )
 
+
+def show_svg(svg: str):
+    """Display an SVG string in a notebook when possible."""
+    try:
+        from IPython.display import SVG, display  # type: ignore
+    except Exception:
+        return svg
+    return display(SVG(svg))
+
 __all__ = [
     "EigenDecomposition",
     "eigendecomposition",
@@ -109,4 +118,5 @@ __all__ = [
     "sel_all",
     "sel_vec",
     "sel_vec_range",
+    "show_svg",
 ]
