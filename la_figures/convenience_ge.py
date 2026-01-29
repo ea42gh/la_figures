@@ -1,8 +1,7 @@
-"""Compatibility imports for Gaussian elimination convenience wrappers.
+"""Import forwarding for Gaussian elimination convenience wrappers.
 
-Some callers (and earlier migration patches) import GE wrappers from a module
-named :mod:`la_figures.convenience_ge`. The current implementation lives in
-:mod:`la_figures.ge_convenience`.
+Some callers import GE wrappers from :mod:`la_figures.convenience_ge`. The
+current implementation lives in :mod:`la_figures.ge_convenience`.
 
 This module re-exports the public wrappers so both import paths work.
 """

@@ -47,7 +47,7 @@ def latexify(x: Any) -> str:
     return str(x)
 
 def make_decorator(**kwargs: Any) -> Callable[[str], str]:
-    """Return a decorator function for TeX strings (legacy-compatible)."""
+    """Return a decorator function for TeX strings (matrixlayout-compatible)."""
     try:
         from matrixlayout.formatting import make_decorator as _make_decorator  # type: ignore
     except Exception:

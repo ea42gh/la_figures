@@ -1,7 +1,5 @@
 """Gaussian elimination trace builders.
 
-This module owns the *algorithmic* portion of the GE migration.
-
 It computes a step-by-step elimination trace (elementary matrices + intermediate
 states) suitable for Gaussian-elimination figures.
 
@@ -11,9 +9,8 @@ The returned values are **description objects**:
 - they do not produce TeX strings,
 - they do not call any rendering/toolchain functions.
 
-Once the grid layout engine is migrated into :mod:`matrixlayout`, callers can
-use :func:`ge_trace` to compute the elimination steps and pass the resulting
-trace into a layout builder.
+Callers can use :func:`ge_trace` to compute the elimination steps and pass the
+resulting trace into a layout builder.
 """
 
 from __future__ import annotations
@@ -469,10 +466,9 @@ def trace_to_layer_matrices(
     *,
     augmented: bool = True,
 ) -> Dict[str, Any]:
-    """Convert a :class:`GETrace` to a legacy-style ``matrices`` layout input.
+    """Convert a :class:`GETrace` to a ``matrices`` layout input.
 
-    This returns the nested list shape historically used by
-    ``itikz.nicematrix.ge`` / ``MatrixGridLayout``:
+    This returns the nested list shape:
 
         [ [None, A0], [E1, A1], [E2, A2], ... ]
 
@@ -602,7 +598,7 @@ def decorate_ge(
             )
         )
 
-    # Julia-style decorations for legacy compatibility.
+    # Julia-style decorations for interop.
     M = int(shp[0]) if shp and len(shp) == 2 else int(trace.initial.rows)
     N = int(n_coef)
     pivot_cols_1b: List[int] = [int(c) + 1 for c in trace.pivot_cols]

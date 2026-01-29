@@ -15,7 +15,7 @@ Example options:
 
 ## QR
 
-- `la_figures.compute_qr_matrices(A, W)`: compute the legacy QR matrix grid. Returns: list of grid matrices. Use when you already have `W`.
+- `la_figures.compute_qr_matrices(A, W)`: compute the QR matrix grid. Returns: list of grid matrices. Use when you already have `W`.
 - `la_figures.gram_schmidt_qr_matrices(A, **opts)`: compute QR grid with rank-deficient handling. Returns: list of grid matrices.
 - `la_figures.qr_tbl_spec(A, W, **opts)`: build a QR spec for matrixlayout. Returns: spec dict.
 - `la_figures.qr_tbl_layout_spec(A, W, **opts)`: build a typed QR layout spec. Returns: typed spec.

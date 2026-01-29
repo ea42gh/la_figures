@@ -21,7 +21,7 @@ from .svd import svd_tbl_spec
 
 
 def _julia_str(x: Any) -> Any:
-    """Alias for :func:`norm_str` kept for Julia interop tests/backward-compat."""
+    """Alias for :func:`norm_str` used by Julia interop tests."""
 
     return norm_str(x)
 

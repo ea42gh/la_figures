@@ -1,14 +1,8 @@
 """Back-substitution helpers for system, cascade, and solution blocks.
 
-This module owns the *algorithmic* portion of the BACKSUBST migration.
-
 It provides:
   - A cascade block generator compatible with :func:`matrixlayout.mk_shortcascade_lines`.
   - Convenience helpers to build TeX for the system and solution blocks.
-
-The implementation is intentionally close to the legacy
-``itikz.nicematrix.BacksubstitutionCascade`` so that characterization tests can
-stabilize before further refactoring.
 """
 
 from __future__ import annotations
@@ -34,7 +28,7 @@ def _bs_rhs(
 ) -> str:
     """Build the right-hand side expression for one back-substitution equation.
 
-    This mirrors the legacy ``_bs_equation`` helper:
+    This mirrors the structure of the historical ``_bs_equation`` helper:
     - it forms ``t = rhs[i] - sum_j A[i,j] * <symbol>``
     - it divides by the pivot coefficient
     - it returns a LaTeX string (not an Eq object) to keep downstream formatting
@@ -158,8 +152,7 @@ def backsubstitution_tex(
 def linear_system_tex(A: Any, b: Any, *, var_name: str = "x") -> str:
     """Return a TeX ``systeme`` representation of ``A x = b``.
 
-    This is a presentation helper, but it is convenient to keep it colocated
-    with the back-substitution algorithm during migration.
+    This is a presentation helper, colocated with the back-substitution logic.
     """
 
     A = to_sympy_matrix(A)
@@ -208,9 +201,9 @@ def standard_solution_tex(
     var_name: str = "x",
     param_name: str = r"\alpha",
 ) -> str:
-    """Return a TeX solution expression in the legacy style.
+    """Return a TeX solution expression in the standard style.
 
-    The output matches the legacy ``_gen_solution_eqs`` structure:
+    The output matches the ``_gen_solution_eqs`` structure:
       ``x = p + sum(alpha_j * h_j)``
     where ``p`` is a particular solution and the ``h_j`` span the nullspace.
     """

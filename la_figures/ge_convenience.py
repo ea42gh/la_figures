@@ -499,7 +499,7 @@ def _build_ge_bundle(
     ref_rhs: Any = None,
     *,
     rhs: Any = None,
-    # Default pivoting strategy must match the original implementation:
+    # Default pivoting strategy must match expected behavior:
     # no pivoting unless explicitly requested.
     pivoting: str = "none",
     gj: bool = False,
@@ -536,7 +536,7 @@ def _build_ge_bundle(
     # Decorations are produced in *coefficient-matrix* coordinates.
     # We rebase pivot boxes to the final (last-layer) A-block in the GE grid.
     # Backwards-compatible pivot toggle:
-    # - tests and legacy notebooks pass show_pivots=True/False.
+    # - tests and notebooks pass show_pivots=True/False.
     # - pivot_style controls explicit TikZ pivot boxes; otherwise we use entry decorators.
     pivots_enabled = bool(show_pivots)
     eff_pivot_style = str(pivot_style or "").strip()
@@ -861,7 +861,7 @@ def ge(
     strict: Optional[bool] = None,
     **render_opts: Any,
 ) -> str:
-    """Compatibility wrapper for the original ``itikz.nicematrix.ge`` surface."""
+    """Convenience wrapper for the GE rendering surface."""
 
     output_stem: Optional[str] = None
     if keep_file:

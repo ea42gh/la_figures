@@ -1,9 +1,7 @@
 """Orthonormalization helpers.
 
-The legacy ``itikz.nicematrix`` implementation used a minimal Gram–Schmidt
-procedure for producing an orthonormal basis inside an eigenspace. We keep the
-same behavior here so that ``*_tbl_spec`` outputs remain compatible with
-characterization tests during migration.
+This module provides a minimal Gram–Schmidt procedure for producing an
+orthonormal basis inside an eigenspace.
 """
 
 from __future__ import annotations
@@ -18,7 +16,7 @@ def q_gram_schmidt(v_list: Sequence[sym.Matrix]) -> List[sym.Matrix]:
 
     Notes
     -----
-    - This is the same basic algorithm as the legacy ``_q_gram_schmidt``.
+    - This is the same basic algorithm used by earlier QR helpers.
     - It assumes the input vectors are linearly independent within the
       eigenspace basis returned by SymPy.
     - If a vector has zero norm (or the orthogonalization produces a zero

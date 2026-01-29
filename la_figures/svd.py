@@ -1,10 +1,7 @@
 """SVD description objects for :mod:`matrixlayout`.
 
-The legacy ``itikz.nicematrix`` implementation built an SVD table by computing
-the eigen-decomposition of ``A^T A`` and converting eigenvalues to singular
-values.
-
-This module ports that algorithm into :mod:`la_figures` and emits a dictionary
+This module builds an SVD table by computing the eigen-decomposition of
+``A^T A`` and converting eigenvalues to singular values. It emits a dictionary
 compatible with :func:`matrixlayout.eigproblem_tex` (case="SVD").
 """
 
@@ -81,7 +78,7 @@ def svd_tbl_spec_from_right_singular_vectors(
     for (sigma2, m, vecs) in right_singular_spaces:
         triples.append((sigma2, int(m), [sym.Matrix(v) for v in vecs]))
 
-    # Sort by sigma^2 descending to match the legacy table ordering.
+    # Sort by sigma^2 descending to match the standard table ordering.
     triples.sort(key=lambda t: t[0], reverse=True)
 
     for (sigma2, m, vecs) in triples:
@@ -127,12 +124,12 @@ def svd_tbl_spec(
     A:
         Matrix (array-like). Converted to a SymPy Matrix.
     Ascale:
-        Optional scaling. Matches the legacy SVD helper:
+        Optional scaling:
         - eigenvalues are divided by ``Ascale**2``
         - left singular vectors use ``1/(sigma*Ascale)``
     eig_digits, sigma2_digits, sigma_digits, vec_digits:
-        Optional rounding controls kept for compatibility with the legacy API.
-        ``sigma2_digits`` is a backward-compatible alias for ``eig_digits``.
+        Optional rounding controls.
+        ``sigma2_digits`` is an alias for ``eig_digits``.
 
     Returns
     -------

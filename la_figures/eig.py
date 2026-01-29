@@ -22,8 +22,8 @@ from .gram_schmidt import q_gram_schmidt
 def _maybe_round(x: Any, digits: Optional[int]) -> Any:
     """Round a scalar-like value if ``digits`` is provided.
 
-    The legacy implementation applied Python's ``round`` directly. We keep the
-    same best-effort approach, but leave non-roundable symbolic values as-is.
+    This uses Python's ``round`` directly when possible and leaves
+    non-roundable symbolic values as-is.
     """
 
     if digits is None:
@@ -64,15 +64,15 @@ def eig_tbl_spec(
     normal:
         If true, compute an orthonormal basis within each eigenspace (``qvecs``).
     Ascale:
-        If provided, eigenvalues are divided by ``Ascale`` (matches legacy).
+        If provided, eigenvalues are divided by ``Ascale``.
     eig_digits, vec_digits:
-        Optional rounding controls kept for compatibility with the legacy API.
+        Optional rounding controls.
 
     Returns
     -------
     dict
         Keys:
-          - ``lambda``: distinct eigenvalues (ordered as in legacy)
+          - ``lambda``: distinct eigenvalues (ordered by the current policy)
           - ``ma``: corresponding algebraic multiplicities
           - ``evecs``: eigenvector groups (list per eigenvalue)
           - ``qvecs``: (optional) orthonormal eigenvector groups
@@ -100,7 +100,7 @@ def eig_tbl_spec(
         vecs2 = [sym.Matrix(v) for v in vecs]
         vecs2 = _maybe_round_vectors(vecs2, vec_digits)
 
-        # Legacy inserts at 0 to reverse the order returned by SymPy.
+        # Insert at 0 to reverse the order returned by SymPy.
         eig["lambda"].insert(0, e_scaled)
         eig["ma"].insert(0, int(m))
         eig["evecs"].insert(0, vecs2)
@@ -133,8 +133,7 @@ def eig_spec_from_eigenvects(
     normal, Ascale, eig_digits, vec_digits:
         Behave as in :func:`eig_tbl_spec`.
     order:
-        - ``"legacy"`` (default): match the legacy itikz ordering (reverse of
-          SymPy's eigenvects order).
+        - ``"legacy"`` (default): reverse SymPy's eigenvects order.
         - ``"sympy"``: preserve SymPy's order.
     """
 

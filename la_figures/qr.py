@@ -9,7 +9,7 @@ import sympy as sym
 from ._sympy_utils import to_sympy_matrix
 
 def compute_qr_matrices(A: Any, W: Any) -> Sequence[Sequence[sym.Matrix]]:
-    """Return the matrix grid used by the legacy QR layout.
+    """Return the matrix grid used by the QR layout.
 
     Parameters
     ----------
@@ -45,7 +45,7 @@ def gram_schmidt_qr_matrices(
     allow_rank_deficient: bool = False,
     rank_deficient: Optional[str] = None,
 ) -> Sequence[Sequence[sym.Matrix]]:
-    """Return the QR grid using the legacy Gram–Schmidt-style scaling.
+    """Return the QR grid using Gram–Schmidt-style scaling.
 
     If ``rank_deficient`` is set, it selects the fallback behavior when
     ``W^T W`` is singular:
@@ -53,7 +53,7 @@ def gram_schmidt_qr_matrices(
       - "pinv": use the pseudo-inverse.
       - "diag": invert only nonzero diagonals.
     If ``allow_rank_deficient`` is True and no ``rank_deficient`` mode is set,
-    it falls back to "pinv" (legacy compatibility).
+    it falls back to "pinv".
     """
 
     A_mat = to_sympy_matrix(A)
