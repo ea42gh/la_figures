@@ -26,6 +26,13 @@ def _julia_str(x: Any) -> Any:
     return norm_str(x)
 
 
+def _filter_tex_kwargs(kwargs: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove kwargs only used by SVG renderers."""
+
+    skip = {"output_dir", "tmp_dir", "toolchain_name", "crop", "padding", "frame"}
+    return {k: v for k, v in kwargs.items() if k not in skip}
+
+
 def _import_eigproblem_tex():
     try:
         from matrixlayout import eigproblem_tex  # type: ignore
@@ -169,7 +176,7 @@ def eig_tbl_bundle(
         vec_digits=kwargs.get("vec_digits"),
     )
 
-    tex = eig_tbl_tex(A, **kwargs)
+    tex = eig_tbl_tex(A, **_filter_tex_kwargs(kwargs))
     svg = None
     try:
         svg = eig_tbl_svg(A, **kwargs)
@@ -299,7 +306,7 @@ def svd_tbl_bundle(A: Any, **kwargs: Any) -> Dict[str, Any]:
         sigma_digits=kwargs.get("sigma_digits"),
         vec_digits=kwargs.get("vec_digits"),
     )
-    tex = svd_tbl_tex(A, **kwargs)
+    tex = svd_tbl_tex(A, **_filter_tex_kwargs(kwargs))
     svg = None
     try:
         svg = svd_tbl_svg(A, **kwargs)
